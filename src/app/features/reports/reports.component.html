@@ -1,0 +1,185 @@
+<div class="animate-fade-in" *ngIf="!isLoading">
+  <!-- Section Title -->
+  <div class="flex align-center justify-between" style="margin-bottom: 24px;">
+    <div>
+      <h1 style="font-size: 26px; font-weight: 700; margin-bottom: 4px;">Informes y Reportes Analíticos</h1>
+      <p style="color: var(--color-text-muted);">Análisis consolidado del rendimiento comercial, conversión de CRM y distribución de ingresos.</p>
+    </div>
+    <div style="font-size: 13px; font-weight: 500; color: var(--color-text-muted); background: var(--color-bg-card); padding: 8px 16px; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border);">
+      Rango: Últimos 6 Meses
+    </div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <!-- Card 1: Ingresos Totales Estimados -->
+    <div class="kpi-card">
+      <span class="kpi-title">Ingresos Totales Estimados</span>
+      <span class="kpi-val">{{ totalEstimatedRevenue | currency:'USD':'symbol':'1.0-0' }}</span>
+      <div class="kpi-indicator indicator-positive">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" style="width: 14px; height: 14px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+        </svg>
+        <span>+12.4% vs mes anterior</span>
+      </div>
+    </div>
+
+    <!-- Card 2: Ingresos Real Estate -->
+    <div class="kpi-card">
+      <span class="kpi-title">Comisiones Real Estate</span>
+      <span class="kpi-val">{{ realEstateRevenue | currency:'USD':'symbol':'1.0-0' }}</span>
+      <div class="kpi-indicator indicator-positive">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" style="width: 14px; height: 14px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+        </svg>
+        <span>+18.1% vs mes anterior</span>
+      </div>
+    </div>
+
+    <!-- Card 3: Ingresos Trámites y Servicios -->
+    <div class="kpi-card">
+      <span class="kpi-title">Honorarios Servicios y Trámites</span>
+      <span class="kpi-val">{{ serviceRevenue | currency:'USD':'symbol':'1.0-0' }}</span>
+      <div class="kpi-indicator indicator-neutral">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" style="width: 14px; height: 14px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15" />
+        </svg>
+        <span>Estable vs mes anterior</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reports Charts Grid -->
+  <div class="reports-grid">
+    
+    <!-- Report 1: Evolución Mensual de Clientes (Line Chart Simulation) -->
+    <div class="report-card">
+      <div class="report-header">
+        <div>
+          <h3 class="report-title">Evolución de Nuevos Clientes</h3>
+          <span class="report-subtitle">Registros netos por mes</span>
+        </div>
+      </div>
+      <!-- Line Chart simulation using aligned bars and nodes -->
+      <div class="line-chart-sim">
+        <div class="line-chart-point-container" *ngFor="let month of monthlyClientEvolution">
+          <!-- Tooltip showing exact value -->
+          <div class="line-chart-tooltip">{{ month.value }} clientes</div>
+          
+          <!-- Node dot at the top of the calculated height -->
+          <div class="line-chart-node"></div>
+          
+          <!-- Dotted/Translucent bar representing height -->
+          <div class="line-chart-bar-indicator" [style.height.%]="(month.value / 25) * 100" style="height: 120px;"></div>
+          
+          <!-- Label -->
+          <span class="line-chart-label">{{ month.name }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report 2: Clientes por Servicio (Top List Progress) -->
+    <div class="report-card">
+      <div class="report-header">
+        <div>
+          <h3 class="report-title">Servicios más Solicitados</h3>
+          <span class="report-subtitle">Asignaciones en clientes activos</span>
+        </div>
+      </div>
+      <div class="distribution-row">
+        <div class="distribution-bar-wrapper" *ngFor="let srv of clientsByService.slice(0, 4)">
+          <div class="distribution-meta">
+            <span>{{ srv.name }}</span>
+            <span style="font-weight: 600;">{{ srv.value }} contratos</span>
+          </div>
+          <div class="distribution-track">
+            <!-- Scaled based on max possible value (8) -->
+            <div class="distribution-fill" [style.width.%]="(srv.value / 8) * 100" style="background-color: var(--color-accent);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report 3: Clientes por Fuente (Distribution percentage) -->
+    <div class="report-card">
+      <div class="report-header">
+        <div>
+          <h3 class="report-title">Fuentes de Origen de Clientes</h3>
+          <span class="report-subtitle">Efectividad de canales de marketing</span>
+        </div>
+      </div>
+      <div class="distribution-row">
+        <div class="distribution-bar-wrapper" *ngFor="let src of clientsBySource">
+          <div class="distribution-meta">
+            <span>{{ src.name }}</span>
+            <span style="font-weight: 600;">{{ src.value }} ({{ src.percentage }}%)</span>
+          </div>
+          <div class="distribution-track">
+            <div class="distribution-fill" [style.width.%]="src.percentage" style="background-color: var(--color-primary-light);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report 4: Ingresos Estimados Distribución -->
+    <div class="report-card">
+      <div class="report-header">
+        <div>
+          <h3 class="report-title">Distribución de Ingresos</h3>
+          <span class="report-subtitle">Aporte por unidad de negocio</span>
+        </div>
+      </div>
+      <div class="distribution-row">
+        <div class="distribution-bar-wrapper" *ngFor="let rev of revenueDistribution">
+          <div class="distribution-meta">
+            <span>{{ rev.name }}</span>
+            <span style="font-weight: 600;">{{ rev.value | currency:'USD':'symbol':'1.0-0' }} ({{ rev.percentage }}%)</span>
+          </div>
+          <div class="distribution-track">
+            <div class="distribution-fill" [style.width.%]="rev.percentage" [style.background-color]="rev.name === 'Real Estate' ? 'var(--color-accent-gold)' : 'var(--color-accent)'"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="reports-grid" style="grid-template-columns: 1fr 1fr;">
+    <!-- Report 5: Propiedades por Ciudad -->
+    <div class="report-card">
+      <div class="report-header">
+        <div>
+          <h3 class="report-title">Propiedades por Ciudad</h3>
+          <span class="report-subtitle">Concentración geográfica del portafolio</span>
+        </div>
+      </div>
+      <div class="stats-list-grid">
+        <div class="stats-list-item" *ngFor="let city of propertiesByCity">
+          <span class="stats-list-name">{{ city.name }}</span>
+          <span class="stats-list-val">{{ city.value }} inmuebles</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report 6: Clientes por Estado -->
+    <div class="report-card">
+      <div class="report-header">
+        <div>
+          <h3 class="report-title">Clientes por Estado de Conversión</h3>
+          <span class="report-subtitle">Embudo de ventas actual</span>
+        </div>
+      </div>
+      <div class="stats-list-grid">
+        <div class="stats-list-item" *ngFor="let st of clientsByStatus">
+          <span class="stats-list-name">{{ st.name }}</span>
+          <span class="stats-list-val">{{ st.value }} clientes ({{ st.percentage }}%)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="isLoading" class="loading-container" style="min-height: 400px;">
+  <span class="spinner-lg"></span>
+  <p style="margin-top: 16px; font-weight: 500;">Cargando reportes comerciales...</p>
+</div>

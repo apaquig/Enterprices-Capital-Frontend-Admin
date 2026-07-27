@@ -1,0 +1,433 @@
+.appointments-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  min-height: 500px;
+}
+
+/* Header Card Styling */
+.calendar-header-card {
+  background-color: var(--color-surface, #ffffff);
+  border-radius: 12px;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.calendar-header-card h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-main, #1e293b);
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-btn-group {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-bg-subtle, #f1f5f9);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.nav-btn {
+  background: transparent;
+  border: 0;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--color-text-muted, #64748b);
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background-color: var(--color-surface, #ffffff);
+  color: var(--color-text-main, #1e293b);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.nav-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Spinner & Loading */
+.loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 0;
+  gap: 16px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--color-bg-subtle, #f1f5f9);
+  border-top: 4px solid var(--color-accent, #3b82f6);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Calendar Card Grid */
+.calendar-grid-card {
+  background-color: var(--color-surface, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.weekdays-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background-color: var(--color-bg-subtle, #f8fafc);
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.weekday-cell {
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted, #64748b);
+  text-transform: uppercase;
+}
+
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: minmax(120px, 1fr);
+}
+
+.day-cell {
+  border-right: 1px solid var(--color-border, #e2e8f0);
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background-color 0.2s ease;
+  background-color: var(--color-surface, #ffffff);
+}
+
+.day-cell:nth-child(7n) {
+  border-right: 0;
+}
+
+.day-cell.other-month {
+  background-color: var(--color-bg-subtle, #f8fafc);
+}
+
+.day-cell.other-month .day-num {
+  color: #cbd5e1;
+}
+
+.day-cell.is-today {
+  background-color: rgba(59, 130, 246, 0.03);
+}
+
+.day-cell.is-today .day-num {
+  background-color: var(--color-accent, #3b82f6);
+  color: #ffffff;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 700;
+}
+
+.day-number-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.day-num {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted, #64748b);
+  padding: 2px;
+}
+
+.day-appointments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  flex-grow: 1;
+  max-height: 120px;
+}
+
+/* Appointment Pill Styling */
+.appointment-pill {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.appointment-pill:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.95);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.appt-time {
+  opacity: 0.85;
+}
+
+.appt-client {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status colors mapping */
+.status-confirmed {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border-left: 3px solid #10b981;
+}
+
+.status-pending {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border-left: 3px solid #f59e0b;
+}
+
+.status-cancelled {
+  background-color: rgba(100, 116, 139, 0.1);
+  color: #475569;
+  border-left: 3px solid #64748b;
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.status-completed {
+  background-color: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  border-left: 3px solid #3b82f6;
+}
+
+.status-noshow {
+  background-color: rgba(139, 92, 246, 0.12);
+  color: #6d28d9;
+  border-left: 3px solid #8b5cf6;
+}
+
+/* Drawer & Overlay */
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 1040;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 100%;
+  max-width: 440px;
+  height: 100vh;
+  background-color: var(--color-surface, #ffffff);
+  box-shadow: -10px 0 30px rgba(15, 23, 42, 0.15);
+  z-index: 1050;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drawer-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-main, #1e293b);
+  margin: 0;
+}
+
+.close-btn {
+  background: transparent;
+  border: 0;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--color-text-muted, #64748b);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.close-btn:hover {
+  color: var(--color-text-main, #1e293b);
+}
+
+.drawer-body {
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex-grow: 1;
+}
+
+.drawer-section h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 10px 0;
+}
+
+.info-card {
+  background-color: var(--color-bg-subtle, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.info-label {
+  color: var(--color-text-muted, #64748b);
+}
+
+.info-val {
+  font-weight: 600;
+  color: var(--color-text-main, #1e293b);
+}
+
+.info-val.highlight {
+  color: var(--color-accent, #3b82f6);
+  font-weight: 700;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.notes-box {
+  background-color: #fffbeb;
+  border: 1px solid #fef3c7;
+  color: #b45309;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* Actions Section */
+.actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.actions-grid button {
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 0;
+  color: white;
+}
+
+.actions-grid .btn-success { background-color: #10b981; }
+.actions-grid .btn-success:hover { background-color: #059669; }
+
+.actions-grid .btn-info { background-color: #3b82f6; }
+.actions-grid .btn-info:hover { background-color: #2563eb; }
+
+.actions-grid .btn-warning { background-color: #f59e0b; }
+.actions-grid .btn-warning:hover { background-color: #d97706; }
+
+.actions-grid .btn-danger { background-color: #ef4444; }
+.actions-grid .btn-danger:hover { background-color: #dc2626; }
+
+.actions-grid button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .days-grid {
+    grid-auto-rows: minmax(90px, 1fr);
+  }
+  .weekday-cell {
+    font-size: 11px;
+    padding: 8px;
+  }
+  .appointment-pill {
+    padding: 2px 4px;
+    font-size: 9px;
+  }
+  .appt-time {
+    display: none;
+  }
+  .drawer {
+    max-width: 100%;
+  }
+}

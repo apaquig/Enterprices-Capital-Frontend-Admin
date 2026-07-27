@@ -1,0 +1,264 @@
+<div class="animate-fade-in">
+  <!-- Section Title -->
+  <div class="flex align-center justify-between" style="margin-bottom: 24px;">
+    <div>
+      <h1 style="font-size: 26px; font-weight: 700; margin-bottom: 4px;">Catálogo de Servicios</h1>
+      <p style="color: var(--color-text-muted);">Administra la cartera de servicios corporativos ofrecidos en Notaría, Finanzas, Seguros, Real Estate y Retiro.</p>
+    </div>
+    <button class="btn btn-primary" (click)="openCreateModal()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      Agregar Servicio
+    </button>
+  </div>
+
+  <!-- Filter & Search Bar -->
+  <div class="filter-bar" style="margin-bottom: 32px;">
+    <div class="search-input-wrapper">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.602 10.602z" />
+      </svg>
+      <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" class="form-control" placeholder="Buscar por nombre de servicio...">
+    </div>
+
+    <!-- Category Filter -->
+    <select [(ngModel)]="filterCategory" (change)="applyFilters()" class="form-select filter-select" style="width: 200px;">
+      <option value="">Todas las Categorías</option>
+      <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+    </select>
+
+    <!-- Status Filter -->
+    <select [(ngModel)]="filterStatus" (change)="applyFilters()" class="form-select filter-select">
+      <option value="">Todos los Estados</option>
+      <option value="active">Activo</option>
+      <option value="inactive">Inactivo</option>
+    </select>
+  </div>
+
+  <!-- Display Categories Grid -->
+  <ng-container *ngFor="let cat of categories">
+    <!-- Render Category section only if it has services matching search/filters -->
+    <div class="category-section" *ngIf="getServicesByCategory(cat).length > 0">
+      <h2 class="category-title">
+        <span>{{ cat }}</span>
+        <span class="category-badge-count">{{ getServicesByCategory(cat).length }}</span>
+      </h2>
+
+      <div class="services-grid">
+        <div class="card service-card" *ngFor="let srv of getServicesByCategory(cat)" [class.inactive]="srv.status === 'inactive'">
+          
+          <!-- Card Header -->
+          <div class="service-card-header">
+            <div class="service-name">{{ srv.name }}</div>
+            <div class="flex gap-1">
+              <!-- Edit Button -->
+              <button class="action-icon-btn" (click)="openEditModal(srv)" title="Editar Servicio" style="width: 28px; height: 28px; border-radius: 50%;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                </svg>
+              </button>
+              <!-- Delete Button -->
+              <button class="action-icon-btn delete-btn" (click)="confirmDeleteService(srv.id || '', $event)" title="Eliminar Servicio" style="width: 28px; height: 28px; border-radius: 50%;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <p class="service-desc">{{ srv.description }}</p>
+
+          <!-- Details Grid (only required documents) -->
+          <div class="service-details" *ngIf="srv.requiredDocuments && srv.requiredDocuments.length > 0">
+            <div style="grid-column: span 2;">
+              <div class="detail-label">Documentación requerida</div>
+              <ul class="detail-value" style="margin: 4px 0 0 0; padding-left: 14px; list-style-type: disc; font-weight: 500; font-size: 11px; color: var(--color-text-muted); list-style-position: outside;">
+                <li *ngFor="let doc of srv.requiredDocuments" style="margin-bottom: 2px; line-height: 1.4;">
+                  {{ doc }}
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Card Footer -->
+          <div class="service-card-footer">
+            <!-- Related Clients Link -->
+            <button type="button" class="clients-link" (click)="viewRelatedClients(srv, $event)">
+              {{ getRelatedClientsCount(srv.id || '') }} clientes
+            </button>
+
+            <!-- Active/Inactive Status Switch -->
+            <label class="switch-container">
+              <span>{{ srv.status === 'active' ? 'Activo' : 'Inactivo' }}</span>
+              <div class="switch">
+                <input type="checkbox" [checked]="srv.status === 'active'" (change)="toggleServiceStatus(srv, $event)">
+                <span class="slider"></span>
+              </div>
+            </label>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- No results fallback -->
+  <div *ngIf="filteredServices.length === 0" style="text-align: center; padding: 60px; background: var(--color-bg-card); border-radius: var(--border-radius-md); border: 1px solid var(--color-border); color: var(--color-text-muted);">
+    No se encontraron servicios que coincidan con la búsqueda.
+  </div>
+</div>
+
+<!-- Modal Formulario Crear/Editar Servicio -->
+<div class="modal-overlay" *ngIf="showFormModal" (click)="closeFormModal()">
+  <div class="modal-card animate-fade-in" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 style="font-size: 18px; font-weight: 700; color: var(--color-primary);">{{ isEditMode ? 'Editar Servicio' : 'Agregar Nuevo Servicio' }}</h2>
+      <button class="action-icon-btn" (click)="closeFormModal()" title="Cerrar">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- General Error Alert -->
+      <div class="alert alert-danger" *ngIf="errorMessage" style="margin-bottom: 16px; font-size: 13px;">
+        <div style="font-weight: 600;">{{ errorMessage }}</div>
+        <ul style="margin: 6px 0 0 0; padding-left: 20px;" *ngIf="validationErrors && validationErrors.length > 0">
+          <li *ngFor="let err of validationErrors">
+            <strong>{{ err.label }}:</strong> {{ err.message }}
+          </li>
+        </ul>
+      </div>
+
+      <form [formGroup]="serviceForm">
+        
+        <!-- Nombre -->
+        <div class="form-group">
+          <label class="form-label">Nombre del Servicio *</label>
+          <input type="text" formControlName="name" class="form-control" [class.is-invalid]="serviceForm.get('name')?.invalid && (isSubmitted || serviceForm.get('name')?.touched || serviceForm.get('name')?.hasError('backend'))" placeholder="Ej. Notaría de Poderes Especiales">
+          <div class="error-message" *ngIf="isSubmitted && serviceForm.get('name')?.hasError('required')">El nombre del servicio es requerido.</div>
+          <div class="error-message" *ngIf="serviceForm.get('name')?.hasError('backend')">{{ serviceForm.get('name')?.getError('backend') }}</div>
+        </div>
+
+        <!-- Categoria y Estado -->
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Categoría *</label>
+            <select formControlName="category" class="form-select" [class.is-invalid]="serviceForm.get('category')?.invalid && (isSubmitted || serviceForm.get('category')?.touched || serviceForm.get('category')?.hasError('backend'))">
+              <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+            </select>
+            <div class="error-message" *ngIf="isSubmitted && serviceForm.get('category')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="serviceForm.get('category')?.hasError('backend')">{{ serviceForm.get('category')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Estado *</label>
+            <select formControlName="status" class="form-select" [class.is-invalid]="serviceForm.get('status')?.invalid && (isSubmitted || serviceForm.get('status')?.touched || serviceForm.get('status')?.hasError('backend'))">
+              <option value="active">Activo</option>
+              <option value="inactive">Inactivo</option>
+            </select>
+            <div class="error-message" *ngIf="isSubmitted && serviceForm.get('status')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="serviceForm.get('status')?.hasError('backend')">{{ serviceForm.get('status')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <!-- Descripcion -->
+        <div class="form-group">
+          <label class="form-label">Descripción del Servicio *</label>
+          <textarea formControlName="description" class="form-control" [class.is-invalid]="serviceForm.get('description')?.invalid && (isSubmitted || serviceForm.get('description')?.touched || serviceForm.get('description')?.hasError('backend'))" rows="3" placeholder="Detalla el alcance y propósito de este servicio..."></textarea>
+          <div class="error-message" *ngIf="isSubmitted && serviceForm.get('description')?.hasError('required')">La descripción es requerida.</div>
+          <div class="error-message" *ngIf="serviceForm.get('description')?.hasError('backend')">{{ serviceForm.get('description')?.getError('backend') }}</div>
+        </div>
+
+
+
+        <!-- Documentos Requeridos -->
+        <div class="form-group">
+          <label class="form-label">Documentos Requeridos (Separados por coma)</label>
+          <input type="text" formControlName="requiredDocuments" class="form-control" [class.is-invalid]="serviceForm.get('requiredDocuments')?.invalid && (isSubmitted || serviceForm.get('requiredDocuments')?.touched || serviceForm.get('requiredDocuments')?.hasError('backend'))" placeholder="Ej. Pasaporte, Licencia de conducir, W-2">
+          <div class="error-message" *ngIf="serviceForm.get('requiredDocuments')?.hasError('backend')">{{ serviceForm.get('requiredDocuments')?.getError('backend') }}</div>
+        </div>
+
+        <!-- Notas internas -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Notas Internas</label>
+          <textarea formControlName="notes" class="form-control" [class.is-invalid]="serviceForm.get('notes')?.invalid && (isSubmitted || serviceForm.get('notes')?.touched || serviceForm.get('notes')?.hasError('backend'))" rows="2" placeholder="Notas operacionales para el personal..."></textarea>
+          <div class="error-message" *ngIf="serviceForm.get('notes')?.hasError('backend')">{{ serviceForm.get('notes')?.getError('backend') }}</div>
+        </div>
+
+      </form>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeFormModal()" [disabled]="isSaving">Cancelar</button>
+      <button class="btn btn-primary" (click)="onSubmitService()" [disabled]="isSaving">
+        <span *ngIf="isSaving" class="spinner-inline"></span>
+        {{ isSaving ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear Servicio') }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Clientes Relacionados -->
+<div class="modal-overlay" *ngIf="showClientsModal" (click)="closeClientsModal()">
+  <div class="modal-card animate-fade-in" style="max-width: 500px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h2 style="font-size: 16px; font-weight: 700; color: var(--color-primary);">Clientes Vinculados</h2>
+        <p style="font-size: 12px; color: var(--color-text-muted); margin-top: 2px;">Servicio: {{ viewedServiceName }}</p>
+      </div>
+      <button class="action-icon-btn" (click)="closeClientsModal()" title="Cerrar">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body" style="padding: 16px;">
+      <div *ngIf="relatedClients.length === 0" style="text-align: center; padding: 24px; color: var(--color-text-muted);">
+        No hay clientes utilizando este servicio actualmente.
+      </div>
+      <table class="modal-client-list-table" *ngIf="relatedClients.length > 0">
+        <thead>
+          <tr>
+            <th>Nombre Cliente</th>
+            <th>Teléfono</th>
+            <th>Estado CRM</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let client of relatedClients">
+            <td style="font-weight: 600; color: var(--color-primary);">{{ client.firstName }} {{ client.lastName }}</td>
+            <td>{{ client.phone }}</td>
+            <td>
+              <span class="badge" [ngClass]="'badge-' + (client.status || '')" style="font-size: 10px; padding: 2px 6px;">{{ getStatusLabel(client.status) }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-primary" (click)="closeClientsModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmación Eliminar Servicio -->
+<div class="modal-overlay" *ngIf="showDeleteConfirm" (click)="closeDeleteConfirm()">
+  <div class="modal-content animate-fade-in" style="max-width: 400px; padding: 24px; text-align: center;" (click)="$event.stopPropagation()">
+    <div style="width: 56px; height: 56px; background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 28px; height: 28px;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    </div>
+    <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--color-primary);">¿Eliminar Servicio?</h3>
+    <p style="color: var(--color-text-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5;">Esta acción eliminará el servicio de manera permanente del catálogo del sistema. ¿Deseas continuar?</p>
+    <div class="flex gap-3 justify-center">
+      <button class="btn btn-secondary" style="flex: 1;" (click)="closeDeleteConfirm()">Cancelar</button>
+      <button class="btn btn-danger" style="flex: 1;" (click)="deleteService()">Confirmar</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,496 @@
+<div class="animate-fade-in">
+  <!-- Section Title -->
+  <div class="flex align-center justify-between" style="margin-bottom: 24px;">
+    <div>
+      <h1 style="font-size: 26px; font-weight: 700; margin-bottom: 4px;">Configuración del Sistema</h1>
+      <p style="color: var(--color-text-muted);">Gestiona los datos corporativos, catálogos del CRM, perfiles de seguridad y preferencias de la aplicación.</p>
+    </div>
+  </div>
+
+  <div class="settings-container">
+    <!-- Settings Sidebar Nav -->
+    <nav class="settings-nav">
+      <button class="settings-nav-btn" *ngIf="isAdmin" [class.active]="activeTab === 'general'" (click)="activeTab = 'general'">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.34 15.84c-.685-.19-1.397-.28-2.11-.275" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9V3.75m0 0a3.75 3.75 0 100 7.5c1.036 0 1.9-.693 2.166-1.638m-2.166 1.638A3.75 3.75 0 1112 3.75z" />
+        </svg>
+        General / Empresa
+      </button>
+      
+      <button class="settings-nav-btn" [class.active]="activeTab === 'profile'" (click)="activeTab = 'profile'">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+        </svg>
+        Mi Cuenta / Perfil
+      </button>
+
+
+
+      <button class="settings-nav-btn" *ngIf="isAdmin" [class.active]="activeTab === 'preferences'" (click)="activeTab = 'preferences'">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.43l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.991l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.645-.869l.214-1.28z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Preferencias
+      </button>
+
+      <button class="settings-nav-btn" *ngIf="isAdmin" [class.active]="activeTab === 'users'" (click)="activeTab = 'users'">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+        </svg>
+        Usuarios / Staff
+      </button>
+    </nav>
+
+    <!-- Settings Contents -->
+    <div class="card settings-card">
+      
+      <!-- TAB 1: General Company settings -->
+      <div *ngIf="activeTab === 'general' && isAdmin" class="animate-fade-in">
+        <h2 class="settings-section-title">Información de la Empresa</h2>
+        
+        <!-- General Error Alert -->
+        <div class="alert alert-danger" *ngIf="companyErrorMessage" style="margin-bottom: 16px; font-size: 13px;">
+          <div style="font-weight: 600;">{{ companyErrorMessage }}</div>
+          <ul style="margin: 6px 0 0 0; padding-left: 20px;" *ngIf="companyValidationErrors && companyValidationErrors.length > 0">
+            <li *ngFor="let err of companyValidationErrors">
+              <strong>{{ err.label }}:</strong> {{ err.message }}
+            </li>
+          </ul>
+        </div>
+
+        <form [formGroup]="companyForm" (ngSubmit)="saveCompanySettings()">
+          
+          <div class="form-group">
+            <label class="form-label">Razón Social *</label>
+            <input type="text" formControlName="companyName" class="form-control" [class.is-invalid]="companyForm.get('companyName')?.invalid && (companyForm.get('companyName')?.touched || companyForm.get('companyName')?.hasError('backend'))">
+            <div class="error-message" *ngIf="companyForm.get('companyName')?.hasError('backend')">{{ companyForm.get('companyName')?.getError('backend') }}</div>
+          </div>
+          <div class="flex gap-3">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Teléfono Corporativo *</label>
+              <input type="text" formControlName="phone" class="form-control" [class.is-invalid]="companyForm.get('phone')?.invalid && (companyForm.get('phone')?.touched || companyForm.get('phone')?.dirty || companyForm.get('phone')?.hasError('backend'))">
+              <div class="error-message" *ngIf="companyForm.get('phone')?.hasError('required') && (companyForm.get('phone')?.touched || companyForm.get('phone')?.dirty)">Requerido</div>
+              <div class="error-message" *ngIf="companyForm.get('phone')?.hasError('invalidPhone') && (companyForm.get('phone')?.touched || companyForm.get('phone')?.dirty)">{{ companyForm.get('phone')?.getError('invalidPhone') }}</div>
+              <div class="error-message" *ngIf="companyForm.get('phone')?.hasError('backend')">{{ companyForm.get('phone')?.getError('backend') }}</div>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Correo de Contacto *</label>
+              <input type="email" formControlName="email" class="form-control" [class.is-invalid]="companyForm.get('email')?.invalid && (companyForm.get('email')?.touched || companyForm.get('email')?.hasError('backend'))">
+              <div class="error-message" *ngIf="companyForm.get('email')?.hasError('backend')">{{ companyForm.get('email')?.getError('backend') }}</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Dirección Fiscal *</label>
+            <input type="text" formControlName="address" class="form-control" [class.is-invalid]="companyForm.get('address')?.invalid && (companyForm.get('address')?.touched || companyForm.get('address')?.hasError('backend'))">
+            <div class="error-message" *ngIf="companyForm.get('address')?.hasError('backend')">{{ companyForm.get('address')?.getError('backend') }}</div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Guardar Configuración</button>
+        </form>
+      </div>
+
+      <!-- TAB 2: Profile Settings -->
+      <div *ngIf="activeTab === 'profile'" class="animate-fade-in">
+        <h2 class="settings-section-title">Mi Cuenta Administrativa</h2>
+        
+        <!-- Avatar management section -->
+        <div class="avatar-upload-section" style="display: flex; align-items: center; gap: 24px; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--color-border);">
+          <!-- Left: Avatar Display/Preview -->
+          <div class="avatar-container" style="position: relative; width: 96px; height: 96px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--color-accent); color: white; font-size: 32px; font-weight: 700; border: 3px solid var(--color-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <img *ngIf="avatarPreview" [src]="avatarPreview" style="width: 100%; height: 100%; object-fit: cover;">
+            <img *ngIf="!avatarPreview && currentUser?.avatarUrl" [src]="currentUser?.avatarUrl" style="width: 100%; height: 100%; object-fit: cover;">
+            <span *ngIf="!avatarPreview && !currentUser?.avatarUrl">{{ getUserInitials() }}</span>
+            
+            <!-- Loader overlay -->
+            <div *ngIf="isAvatarLoading" style="position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;">
+              <span class="spinner-sm" style="border: 2px solid white; border-top-color: transparent; border-radius: 50%; width: 20px; height: 20px; display: inline-block; animation: spin 1s linear infinite;"></span>
+            </div>
+          </div>
+
+          <!-- Right: Upload / Delete Controls -->
+          <div class="avatar-controls" style="display: flex; flex-direction: column; gap: 8px;">
+            <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--color-text-dark);">Foto de Perfil</h4>
+            <p style="margin: 0 0 4px 0; font-size: 12px; color: var(--color-text-muted);">Formatos admitidos: JPG, JPEG, PNG, WEBP. Máximo 5MB.</p>
+            
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <!-- Select Image Button -->
+              <button type="button" class="btn btn-secondary btn-sm" (click)="avatarInput.click()" [disabled]="isAvatarLoading">
+                Seleccionar foto
+              </button>
+              <input #avatarInput type="file" (change)="onAvatarFileSelected($event)" style="display: none;" accept="image/png, image/jpeg, image/jpg, image/webp">
+
+              <!-- Save/Upload Button (visible if preview exists) -->
+              <button type="button" class="btn btn-primary btn-sm" *ngIf="avatarPreview && !isAvatarLoading" (click)="uploadAvatar()">
+                Guardar foto
+              </button>
+
+              <!-- Cancel Selection Button -->
+              <button type="button" class="btn btn-secondary btn-sm" *ngIf="avatarPreview && !isAvatarLoading" (click)="avatarPreview = null; avatarFile = null;" style="background-color: transparent; border-color: var(--color-border); color: var(--color-text-dark);">
+                Descartar
+              </button>
+
+              <!-- Delete Button (visible if user has avatar and no preview active) -->
+              <button type="button" class="btn btn-secondary btn-sm" *ngIf="currentUser?.avatarUrl && !avatarPreview && !isAvatarLoading" (click)="deleteAvatar()" style="background-color: #EF4444; border-color: #EF4444; color: white;">
+                Eliminar foto
+              </button>
+            </div>
+
+            <!-- Message banners -->
+            <div *ngIf="avatarError" style="margin-top: 6px; font-size: 12px; color: var(--color-danger); font-weight: 500;">
+              {{ avatarError }}
+            </div>
+            <div *ngIf="avatarSuccess" style="margin-top: 6px; font-size: 12px; color: #10B981; font-weight: 500;">
+              {{ avatarSuccess }}
+            </div>
+          </div>
+        </div>
+
+        <!-- General Error Alert -->
+        <div class="alert alert-danger" *ngIf="profileErrorMessage" style="margin-bottom: 16px; font-size: 13px;">
+          <div style="font-weight: 600;">{{ profileErrorMessage }}</div>
+          <ul style="margin: 6px 0 0 0; padding-left: 20px;" *ngIf="profileValidationErrors && profileValidationErrors.length > 0">
+            <li *ngFor="let err of profileValidationErrors">
+              <strong>{{ err.label }}:</strong> {{ err.message }}
+            </li>
+          </ul>
+        </div>
+
+        <form [formGroup]="profileForm" (ngSubmit)="saveProfileSettings()" autocomplete="off">
+          
+          <div class="flex gap-3">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Nombre *</label>
+              <input type="text" formControlName="firstName" class="form-control" [class.is-invalid]="profileForm.get('firstName')?.invalid && (profileForm.get('firstName')?.touched || profileForm.get('firstName')?.hasError('backend'))">
+              <div class="error-message" *ngIf="profileForm.get('firstName')?.hasError('backend')">{{ profileForm.get('firstName')?.getError('backend') }}</div>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Apellido *</label>
+              <input type="text" formControlName="lastName" class="form-control" [class.is-invalid]="profileForm.get('lastName')?.invalid && (profileForm.get('lastName')?.touched || profileForm.get('lastName')?.hasError('backend'))">
+              <div class="error-message" *ngIf="profileForm.get('lastName')?.hasError('backend')">{{ profileForm.get('lastName')?.getError('backend') }}</div>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Correo Administrativo *</label>
+              <input type="email" formControlName="email" class="form-control" [class.is-invalid]="profileForm.get('email')?.invalid && (profileForm.get('email')?.touched || profileForm.get('email')?.hasError('backend'))">
+              <div class="error-message" *ngIf="profileForm.get('email')?.hasError('backend')">{{ profileForm.get('email')?.getError('backend') }}</div>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Rol del Sistema</label>
+              <input type="text" formControlName="role" class="form-control" readonly style="background-color: #F1F5F9; color: var(--color-text-muted);">
+            </div>
+          </div>
+ 
+          <div class="form-group">
+            <label class="form-label">Teléfono de Contacto</label>
+            <input type="text" formControlName="phone" class="form-control" placeholder="Ej. +593 99 999 9999" [class.is-invalid]="profileForm.get('phone')?.invalid && (profileForm.get('phone')?.touched || profileForm.get('phone')?.dirty || profileForm.get('phone')?.hasError('backend'))">
+            <div class="error-message" *ngIf="profileForm.get('phone')?.hasError('invalidPhone') && (profileForm.get('phone')?.touched || profileForm.get('phone')?.dirty)">{{ profileForm.get('phone')?.getError('invalidPhone') }}</div>
+            <div class="error-message" *ngIf="profileForm.get('phone')?.hasError('backend')">{{ profileForm.get('phone')?.getError('backend') }}</div>
+          </div>
+
+          <!-- Password change section -->
+          <h3 style="font-size: 13px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin-top: 24px; margin-bottom: 16px; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">Actualizar Contraseña</h3>
+          
+          <div class="form-group">
+            <label class="form-label">Contraseña Actual</label>
+            <div class="password-input-wrapper">
+              <input 
+                [type]="showCurrentPassword ? 'text' : 'password'" 
+                formControlName="currentPassword" 
+                autocomplete="new-password"
+                class="form-control" 
+                [class.is-invalid]="profileForm.get('currentPassword')?.invalid && (profileForm.get('currentPassword')?.touched || profileForm.get('currentPassword')?.hasError('backend'))" 
+                placeholder="Contraseña actual"
+                style="padding-right: 44px;"
+              >
+              <button 
+                type="button" 
+                class="password-toggle-btn" 
+                (click)="showCurrentPassword = !showCurrentPassword"
+                [title]="showCurrentPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              >
+                <i [class]="showCurrentPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+              </button>
+            </div>
+            <div class="error-message" *ngIf="profileForm.get('currentPassword')?.hasError('backend')">{{ profileForm.get('currentPassword')?.getError('backend') }}</div>
+          </div>
+
+          <div class="flex gap-3">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Nueva Contraseña</label>
+              <div class="password-input-wrapper">
+                <input 
+                  [type]="showNewPassword ? 'text' : 'password'" 
+                  formControlName="newPassword" 
+                  autocomplete="new-password"
+                  class="form-control" 
+                  [class.is-invalid]="profileForm.get('newPassword')?.invalid && (profileForm.get('newPassword')?.touched || profileForm.get('newPassword')?.hasError('backend'))" 
+                  placeholder="Nueva contraseña"
+                  style="padding-right: 44px;"
+                >
+                <button 
+                  type="button" 
+                  class="password-toggle-btn" 
+                  (click)="showNewPassword = !showNewPassword"
+                  [title]="showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                >
+                  <i [class]="showNewPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                </button>
+              </div>
+              <div class="error-message" *ngIf="profileForm.get('newPassword')?.hasError('backend')">{{ profileForm.get('newPassword')?.getError('backend') }}</div>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Confirmar Contraseña</label>
+              <div class="password-input-wrapper">
+                <input 
+                  [type]="showConfirmPassword ? 'text' : 'password'" 
+                  formControlName="confirmPassword" 
+                  autocomplete="new-password"
+                  class="form-control" 
+                  [class.is-invalid]="profileForm.get('confirmPassword')?.invalid && (profileForm.get('confirmPassword')?.touched || profileForm.get('confirmPassword')?.hasError('backend'))" 
+                  placeholder="Confirmar nueva contraseña"
+                  style="padding-right: 44px;"
+                >
+                <button 
+                  type="button" 
+                  class="password-toggle-btn" 
+                  (click)="showConfirmPassword = !showConfirmPassword"
+                  [title]="showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                >
+                  <i [class]="showConfirmPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                </button>
+              </div>
+              <div class="error-message" *ngIf="profileForm.get('confirmPassword')?.hasError('backend')">{{ profileForm.get('confirmPassword')?.getError('backend') }}</div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Guardar Cambios</button>
+        </form>
+      </div>
+
+
+
+      <!-- TAB 4: Preferences settings -->
+      <div *ngIf="activeTab === 'preferences' && isAdmin" class="animate-fade-in">
+        <h2 class="settings-section-title">Preferencias de la Aplicación</h2>
+        <form [formGroup]="preferencesForm" (ngSubmit)="savePreferences()">
+          
+          <div class="form-group">
+            <label class="form-label">Tema Visual</label>
+            <select formControlName="theme" class="form-select" style="max-width: 300px;">
+              <option value="light">Azul Marino / Claro (Predeterminado)</option>
+              <option value="dark" disabled>Modo Oscuro (Próximamente)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Vista Principal del Dashboard</label>
+            <select formControlName="defaultDashboardView" class="form-select" style="max-width: 300px;">
+              <option value="general">Métricas Globales</option>
+              <option value="crm">CRM y Clientes</option>
+              <option value="real_estate">Real Estate</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Registros por página en Tablas</label>
+            <select formControlName="itemsPerPage" class="form-select" style="max-width: 150px;">
+              <option [value]="5">5 filas</option>
+              <option [value]="10">10 filas</option>
+              <option [value]="25">25 filas</option>
+              <option [value]="50">50 filas</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="remember-me" style="margin-top: 10px;">
+              <input type="checkbox" formControlName="notificationsEnabled">
+              Habilitar notificaciones en tiempo real en la barra superior
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Guardar Preferencias</button>
+        </form>
+      </div>
+
+      <!-- TAB 5: Staff / Users management -->
+      <div *ngIf="activeTab === 'users' && isAdmin" class="animate-fade-in">
+        <div class="flex align-center justify-between" style="margin-bottom: 20px;">
+          <h2 class="settings-section-title" style="margin-bottom: 0;">Colaboradores Internos (Staff)</h2>
+          <button type="button" class="btn btn-primary btn-sm" (click)="openCreateStaff()" *ngIf="!showStaffForm && isAdmin">
+            + Registrar Colaborador
+          </button>
+        </div>
+
+        <!-- Loader -->
+        <div *ngIf="isStaffLoading" class="loading-container" style="min-height: 200px;">
+          <span class="spinner-lg"></span>
+          <p style="margin-top: 12px; font-size: 13px;">Cargando lista de personal...</p>
+        </div>
+
+        <!-- Staff List Table -->
+        <div class="table-responsive animate-fade-in" *ngIf="!isStaffLoading && !showStaffForm">
+          <table class="custom-table" style="font-size: 13px;">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Correo Electrónico</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let u of usersList">
+                <td style="font-weight: 600; color: var(--color-primary);">{{ u.name }}</td>
+                <td>{{ u.email }}</td>
+                <td style="text-transform: capitalize;">{{ u.role }}</td>
+                <td>
+                  <span class="badge" [ngClass]="u.status === 'active' ? 'badge-active' : 'badge-inactive'">
+                    {{ u.status === 'active' ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+                <td>
+                  <div class="flex justify-end gap-2">
+                    <button class="action-icon-btn" (click)="openEditStaff(u)" title="Editar Colaborador">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                      </svg>
+                    </button>
+                    <button class="action-icon-btn" [class.delete-btn]="u.status === 'active'" (click)="toggleStaffStatus(u)" [title]="u.status === 'active' ? 'Desactivar' : 'Activar'">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+                      </svg>
+                    </button>
+
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Staff Form Panel -->
+        <div *ngIf="showStaffForm" class="animate-fade-in card" style="box-shadow: none; border: 1px solid var(--color-border); padding: 20px; margin-top: 10px;">
+          <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 16px; color: var(--color-accent); text-transform: uppercase;">
+            {{ isStaffEditMode ? 'Editar Colaborador' : 'Registrar Nuevo Colaborador' }}
+          </h3>
+
+          <!-- General Error Alert -->
+          <div class="alert alert-danger" *ngIf="staffErrorMessage" style="margin-bottom: 16px; font-size: 13px;">
+            <div style="font-weight: 600;">{{ staffErrorMessage }}</div>
+            <ul style="margin: 6px 0 0 0; padding-left: 20px;" *ngIf="staffValidationErrors && staffValidationErrors.length > 0">
+              <li *ngFor="let err of staffValidationErrors">
+                <strong>{{ err.label }}:</strong> {{ err.message }}
+              </li>
+            </ul>
+          </div>
+
+          <form [formGroup]="staffForm" (ngSubmit)="onSubmitStaff()" autocomplete="off">
+            <div class="flex gap-3">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Nombre *</label>
+                <input type="text" formControlName="firstName" class="form-control" [class.is-invalid]="staffForm.get('firstName')?.invalid && (isStaffSubmitted || staffForm.get('firstName')?.touched || staffForm.get('firstName')?.hasError('backend'))" placeholder="Ej. Juan">
+                <div class="error-message" *ngIf="isStaffSubmitted && staffForm.get('firstName')?.hasError('required')">Requerido</div>
+                <div class="error-message" *ngIf="staffForm.get('firstName')?.hasError('backend')">{{ staffForm.get('firstName')?.getError('backend') }}</div>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Apellido *</label>
+                <input type="text" formControlName="lastName" class="form-control" [class.is-invalid]="staffForm.get('lastName')?.invalid && (isStaffSubmitted || staffForm.get('lastName')?.touched || staffForm.get('lastName')?.hasError('backend'))" placeholder="Ej. Pérez">
+                <div class="error-message" *ngIf="isStaffSubmitted && staffForm.get('lastName')?.hasError('required')">Requerido</div>
+                <div class="error-message" *ngIf="staffForm.get('lastName')?.hasError('backend')">{{ staffForm.get('lastName')?.getError('backend') }}</div>
+              </div>
+            </div>
+            
+            <div class="flex gap-3">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Correo Electrónico *</label>
+                <input type="email" formControlName="email" autocomplete="off" class="form-control" [class.is-invalid]="staffForm.get('email')?.invalid && (isStaffSubmitted || staffForm.get('email')?.touched || staffForm.get('email')?.hasError('backend'))" placeholder="colaborador@enterprisescapital.com">
+                <div class="error-message" *ngIf="isStaffSubmitted && staffForm.get('email')?.hasError('required')">Requerido</div>
+                <div class="error-message" *ngIf="isStaffSubmitted && staffForm.get('email')?.hasError('email')">Ingresa un correo válido</div>
+                <div class="error-message" *ngIf="staffForm.get('email')?.hasError('backend')">{{ staffForm.get('email')?.getError('backend') }}</div>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Rol del Sistema *</label>
+                <select formControlName="role" class="form-select" [class.is-invalid]="staffForm.get('role')?.invalid && (isStaffSubmitted || staffForm.get('role')?.touched || staffForm.get('role')?.hasError('backend'))">
+                  <option *ngFor="let r of roleOptions" [value]="r">{{ r | uppercase }}</option>
+                </select>
+                <div class="error-message" *ngIf="staffForm.get('role')?.hasError('backend')">{{ staffForm.get('role')?.getError('backend') }}</div>
+              </div>
+            </div>
+ 
+            <div class="form-group">
+              <label class="form-label">Teléfono</label>
+              <input type="text" formControlName="phone" autocomplete="off" class="form-control" placeholder="Ej. 0991234567" [class.is-invalid]="staffForm.get('phone')?.invalid && (isStaffSubmitted || staffForm.get('phone')?.touched || staffForm.get('phone')?.dirty || staffForm.get('phone')?.hasError('backend'))">
+              <div class="error-message" *ngIf="staffForm.get('phone')?.hasError('invalidPhone') && (isStaffSubmitted || staffForm.get('phone')?.touched || staffForm.get('phone')?.dirty)">{{ staffForm.get('phone')?.getError('invalidPhone') }}</div>
+              <div class="error-message" *ngIf="staffForm.get('phone')?.hasError('backend')">{{ staffForm.get('phone')?.getError('backend') }}</div>
+            </div>
+ 
+            <div class="form-group">
+              <label class="form-label">Contraseña {{ isStaffEditMode ? '(Dejar vacío para mantener actual)' : '*' }}</label>
+              <div class="password-input-wrapper">
+                <input 
+                  [type]="showStaffPassword ? 'text' : 'password'" 
+                  formControlName="password" 
+                  autocomplete="new-password"
+                  class="form-control" 
+                  [class.is-invalid]="staffForm.get('password')?.invalid && (isStaffSubmitted || staffForm.get('password')?.touched || staffForm.get('password')?.hasError('backend'))" 
+                  [placeholder]="isStaffEditMode ? 'Escribir para cambiar...' : 'Mínimo 6 caracteres'"
+                  style="padding-right: 44px;"
+                >
+                <button 
+                  type="button" 
+                  class="password-toggle-btn" 
+                  (click)="showStaffPassword = !showStaffPassword"
+                  [title]="showStaffPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                >
+                  <i [class]="showStaffPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                </button>
+              </div>
+              <div class="error-message" *ngIf="isStaffSubmitted && staffForm.get('password')?.hasError('required')">Requerido</div>
+              <div class="error-message" *ngIf="isStaffSubmitted && staffForm.get('password')?.hasError('minlength')">Mínimo 6 caracteres</div>
+              <div class="error-message" *ngIf="staffForm.get('password')?.hasError('backend')">{{ staffForm.get('password')?.getError('backend') }}</div>
+            </div>
+
+            <div class="flex gap-3 justify-end" style="margin-top: 24px;">
+              <button type="button" class="btn btn-secondary" (click)="closeStaffForm()" [disabled]="isStaffSaving">Cancelar</button>
+              <button type="submit" class="btn btn-primary" [disabled]="isStaffSaving">
+                <span *ngIf="isStaffSaving" class="spinner-inline"></span>
+                {{ isStaffSaving ? 'Guardando...' : 'Guardar Colaborador' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal: Confirmación Eliminar Colaborador -->
+      <div class="modal-overlay" *ngIf="showStaffDeleteConfirm" (click)="closeStaffDeleteConfirm()">
+        <div class="modal-content animate-fade-in" style="max-width: 400px; padding: 24px; text-align: center;" (click)="$event.stopPropagation()">
+          <div style="width: 56px; height: 56px; background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 28px; height: 28px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--color-primary);">¿Eliminar Colaborador?</h3>
+          <p style="color: var(--color-text-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5;">Esta acción eliminará al colaborador de manera permanente de la base de datos. ¿Deseas continuar?</p>
+          <div class="flex gap-3 justify-center">
+            <button class="btn btn-secondary" style="flex: 1;" (click)="closeStaffDeleteConfirm()">Cancelar</button>
+            <button class="btn btn-danger" style="flex: 1;" (click)="deleteStaff()">Confirmar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Popup Notification -->
+<div class="toast-container" *ngIf="showToast">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296" />
+  </svg>
+  <span>{{ toastMessage }}</span>
+</div>

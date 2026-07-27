@@ -1,0 +1,968 @@
+<div class="animate-fade-in">
+  <!-- Section Title -->
+  <div class="flex align-center justify-between" style="margin-bottom: 24px;">
+    <div>
+      <h1 style="font-size: 26px; font-weight: 700; margin-bottom: 4px;">Inventario Inmobiliario (Real Estate)</h1>
+      <p style="color: var(--color-text-muted);">Administra y promueve el catálogo de casas, apartamentos y locales de inversión de Enterprises Capital LLC.</p>
+    </div>
+    <button class="btn btn-primary" (click)="openCreateModal()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      Nueva Propiedad
+    </button>
+  </div>
+
+  <!-- Filter & Search Bar -->
+  <div class="filter-bar">
+    <div class="search-input-wrapper">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.602 10.602z" />
+      </svg>
+      <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" class="form-control" placeholder="Buscar por título, dirección, ciudad...">
+    </div>
+
+    <!-- Status Filter -->
+    <select [(ngModel)]="filterStatus" (change)="applyFilters()" class="form-select filter-select">
+      <option value="">Cualquier Estado</option>
+      <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+    </select>
+
+    <!-- Operation Filter -->
+    <select [(ngModel)]="filterOperation" (change)="applyFilters()" class="form-select filter-select">
+      <option value="">Cualquier Operación</option>
+      <option *ngFor="let opt of operationOptions" [value]="opt.value">{{ opt.label }}</option>
+    </select>
+
+    <!-- Country Filter -->
+    <select [(ngModel)]="filterCountry" (change)="applyFilters()" class="form-select filter-select">
+      <option value="">Cualquier País</option>
+      <option value="USA">USA</option>
+      <option value="Ecuador">Ecuador</option>
+    </select>
+
+    <!-- Price Range Filters -->
+    <div class="flex align-center gap-2">
+      <input type="number" [(ngModel)]="priceMin" (ngModelChange)="applyFilters()" class="form-control" placeholder="Min $" style="width: 100px;">
+      <span style="color: var(--color-text-light);">a</span>
+      <input type="number" [(ngModel)]="priceMax" (ngModelChange)="applyFilters()" class="form-control" placeholder="Max $" style="width: 110px;">
+    </div>
+
+    <button class="btn btn-secondary btn-sm" (click)="resetFilters()" style="padding: 10px 14px;">Restablecer</button>
+
+    <!-- View Mode Toggles -->
+    <div class="view-toggles" style="margin-left: auto;">
+      <button class="view-toggle-btn" [class.active]="viewMode === 'grid'" (click)="setViewMode('grid')" title="Vista Tarjetas">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        </svg>
+      </button>
+      <button class="view-toggle-btn" [class.active]="viewMode === 'table'" (click)="setViewMode('table')" title="Vista Tabla">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- GRID VIEW -->
+  <div class="properties-grid" *ngIf="!isLoading && viewMode === 'grid'">
+    <div class="card property-card animate-fade-in" *ngFor="let prop of filteredProperties" (click)="openDetailDrawer(prop)">
+      
+      <!-- Image & Badges with dual-layer aspect ratio adaptation and slider -->
+      <div class="property-img-wrapper" style="background-color: #E2E8F0; position: relative;">
+        <!-- Placeholder if no images or image error -->
+        <div *ngIf="(!prop.imageUrl && (!prop.images || prop.images.length === 0)) || prop.hasImageError" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); color: var(--color-text-muted);">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor" style="width: 36px; height: 36px; margin-bottom: 4px; color: var(--color-text-light);">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 18H21" />
+          </svg>
+          <span style="font-size: 11px; font-weight: 500; color: var(--color-text-muted);">Sin Imagen</span>
+        </div>
+
+        <ng-container *ngIf="prop.imageUrl && !prop.hasImageError">
+          <!-- Slider Mode (if 2 or more images) -->
+          <ng-container *ngIf="prop.images && prop.images.length > 1; else singleImage">
+            <!-- Background layer: blurred and scaled cover to fill container -->
+            <img [src]="prop.images[prop.activeImageIndex || 0].url" (error)="prop.hasImageError = true" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(8px) brightness(0.75); transform: scale(1.1); pointer-events: none;">
+            <!-- Foreground layer: contain image -->
+            <img [src]="prop.images[prop.activeImageIndex || 0].url" [alt]="prop.name" class="property-img" style="position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; background: transparent;">
+
+            <!-- Navigation Buttons -->
+            <button class="slider-btn prev-btn" (click)="prevImage(prop, $event)" title="Anterior">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+            <button class="slider-btn next-btn" (click)="nextImage(prop, $event)" title="Siguiente">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+
+            <!-- Dots Indicator -->
+            <div class="slider-dots">
+              <span *ngFor="let img of prop.images; let i = index" class="slider-dot" [class.active]="(prop.activeImageIndex || 0) === i"></span>
+            </div>
+          </ng-container>
+
+          <!-- Single Image Mode -->
+          <ng-template #singleImage>
+            <!-- Background layer: blurred and scaled cover to fill container -->
+            <img [src]="prop.imageUrl" (error)="prop.hasImageError = true" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(8px) brightness(0.75); transform: scale(1.1); pointer-events: none;">
+            <!-- Foreground layer: contain image -->
+            <img [src]="prop.imageUrl" [alt]="prop.name" class="property-img" style="position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; background: transparent;">
+          </ng-template>
+        </ng-container>
+        <span class="property-operation-badge" [ngClass]="prop.operationType" style="z-index: 2;">
+          {{ getOperationLabel(prop.operationType) }}
+        </span>
+        <!-- Price Drop discount tag -->
+        <span class="price-drop-badge" *ngIf="hasPriceDropped(prop)" style="z-index: 2;">
+          ↓ {{ getPriceDropPercentage(prop) }}% REBAJADO
+        </span>
+      </div>
+
+      <!-- Main Info -->
+      <div class="property-card-content">
+        <div class="property-price-container">
+          <span class="property-current-price">{{ prop.currentPrice | currency:'USD':'symbol':'1.0-0' }}</span>
+          <span class="property-prev-price" *ngIf="prop.previousPrice">{{ prop.previousPrice | currency:'USD':'symbol':'1.0-0' }}</span>
+        </div>
+
+        <h3 class="property-card-title">{{ prop.name }}</h3>
+        
+        <div class="property-card-address">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25A7.5 7.5 0 0119.5 10.5z" />
+          </svg>
+          {{ prop.address }}, {{ prop.city }}, {{ prop.state }}
+        </div>
+
+        <!-- Specifications -->
+        <div class="property-specs">
+          <div class="spec-item" *ngIf="(prop.bedrooms || 0) > 0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003" />
+            </svg>
+            <span>{{ prop.bedrooms }} Hab.</span>
+          </div>
+          <div class="spec-item" *ngIf="(prop.bathrooms || 0) > 0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15.75v.008h-.008v-.008H8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+            </svg>
+            <span>{{ prop.bathrooms }} Baños</span>
+          </div>
+          <div class="spec-item">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v16.5m16.5-16.5v16.5m-16.5-16.5h16.5m-16.5 16.5h16.5" />
+            </svg>
+            <span>{{ prop.area }} sq ft</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 14px; text-align: right;">
+          <span style="font-size: 12px; font-weight: 600; color: var(--color-primary); cursor: pointer;">Ver más →</span>
+        </div>
+      </div>
+
+      <!-- Card Footer -->
+      <div class="property-card-footer">
+        <span class="badge" [ngClass]="'badge-' + prop.status">{{ getStatusLabel(prop.status) }}</span>
+        
+        <div class="flex gap-2">
+          <!-- Edit -->
+          <button class="action-icon-btn btn-circle" (click)="openEditModal(prop, $event)" title="Editar Propiedad">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+            </svg>
+          </button>
+          <!-- Delete -->
+          <button class="action-icon-btn btn-circle delete-btn" (click)="confirmDeleteProperty(prop.id || '', $event)" title="Eliminar Propiedad">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TABLE VIEW -->
+  <div class="table-responsive animate-fade-in" *ngIf="!isLoading && viewMode === 'table'">
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th>Propiedad</th>
+          <th>Ubicación</th>
+          <th>Precio Actual / Prev</th>
+          <th>Tipo / Op</th>
+          <th>Specs</th>
+          <th>Estado</th>
+          <th>Agente</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let prop of filteredProperties" (click)="openDetailDrawer(prop)" style="cursor: pointer;">
+          <!-- Name -->
+          <td>
+            <div style="font-weight: 600; color: var(--color-primary);">{{ prop.name }}</div>
+            <div style="font-size: 11px; color: var(--color-text-muted);">Construida en {{ prop.yearBuilt }}</div>
+          </td>
+          <!-- Address -->
+          <td>{{ prop.address }}, {{ prop.city }} ({{ prop.state }})</td>
+          <!-- Price -->
+          <td>
+            <div style="font-weight: 700; color: var(--color-primary);">{{ prop.currentPrice | currency:'USD':'symbol':'1.0-0' }}</div>
+            <div style="font-size: 11px; text-decoration: line-through; color: var(--color-text-light);" *ngIf="prop.previousPrice">
+              {{ prop.previousPrice | currency:'USD':'symbol':'1.0-0' }}
+            </div>
+          </td>
+          <!-- Type & Op -->
+          <td>
+            <div style="text-transform: capitalize;">{{ getTypeLabel(prop.type) }}</div>
+            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase;" class="flex align-center gap-2">
+              <span class="color-dot" [ngClass]="{
+                'dot-active': prop.operationType === 'sale',
+                'dot-prospect': prop.operationType === 'rent',
+                'dot-in-progress': prop.operationType === 'investment'
+              }" style="width: 8px; height: 8px;"></span>
+              {{ getOperationLabel(prop.operationType) }}
+            </div>
+          </td>
+          <!-- Specs -->
+          <td>
+            <div>{{ prop.bedrooms }} Hab, {{ prop.bathrooms }} Baños</div>
+            <div style="font-size: 11px; color: var(--color-text-muted);">{{ prop.area }} sq ft</div>
+          </td>
+          <!-- Status -->
+          <td>
+            <span class="badge" [ngClass]="'badge-' + prop.status">{{ getStatusLabel(prop.status) }}</span>
+          </td>
+          <!-- Agent -->
+          <td>{{ prop.agent }}</td>
+          <!-- Actions -->
+          <td>
+            <div class="table-actions">
+              <button class="action-icon-btn" (click)="openEditModal(prop, $event)" title="Editar">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                </svg>
+              </button>
+              <button class="action-icon-btn delete-btn" (click)="confirmDeleteProperty(prop.id || '', $event)" title="Eliminar">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Fallback -->
+  <div *ngIf="isLoading" class="loading-container" style="min-height: 250px; margin-top: 24px; background: var(--color-bg-card); border-radius: var(--border-radius-md); border: 1px solid var(--color-border);">
+    <span class="spinner-lg"></span>
+    <p style="margin-top: 12px; font-weight: 500; color: var(--color-text-muted);">Cargando catálogo inmobiliario...</p>
+  </div>
+
+  <div *ngIf="!isLoading && filteredProperties.length === 0" style="text-align: center; padding: 60px; background: var(--color-bg-card); border-radius: var(--border-radius-md); border: 1px solid var(--color-border); color: var(--color-text-muted); margin-top: 24px;">
+    No se encontraron propiedades inmobiliarias que coincidan con la búsqueda.
+  </div>
+
+  <!-- Pagination Footer -->
+  <div class="pagination-wrapper" *ngIf="!isLoading && pagination.totalPages > 1" style="margin-top: 24px;">
+    <div>
+      Mostrando {{ filteredProperties.length }} de {{ pagination.total }} propiedades registradas.
+    </div>
+    <div class="pagination-btn-group">
+      <button class="pagination-btn" [disabled]="pagination.page === 1" (click)="onPageChange(pagination.page - 1)">
+        Anterior
+      </button>
+      <button class="pagination-btn" *ngFor="let p of getPagesArray()" 
+              [class.active]="pagination.page === p" (click)="onPageChange(p)">
+        {{ p }}
+      </button>
+      <button class="pagination-btn" [disabled]="pagination.page === pagination.totalPages" (click)="onPageChange(pagination.page + 1)">
+        Siguiente
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Formulario Crear/Editar Propiedad -->
+<div class="modal-overlay" *ngIf="showFormModal" (click)="closeFormModal()">
+  <div class="modal-card animate-fade-in" style="max-width: 680px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 style="font-size: 18px; font-weight: 700; color: var(--color-primary);">{{ isEditMode ? 'Editar Detalles de Propiedad' : 'Agregar Nueva Propiedad al Catálogo' }}</h2>
+      <button class="action-icon-btn" (click)="closeFormModal()" title="Cerrar">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="alert alert-danger" *ngIf="errorMessage" style="margin-bottom: 16px; border-radius: var(--border-radius-sm); font-weight: 500; font-size: 13px; padding: 10px 14px; background-color: var(--color-danger-bg); border: 1px solid var(--color-danger); color: var(--color-danger);">
+        <div style="font-weight: 600;">{{ errorMessage }}</div>
+        <ul style="margin: 6px 0 0 0; padding-left: 20px;" *ngIf="validationErrors && validationErrors.length > 0">
+          <li *ngFor="let err of validationErrors">
+            <strong>{{ err.label }}:</strong> {{ err.message }}
+          </li>
+        </ul>
+      </div>
+      <form [formGroup]="propertyForm">
+        
+        <!-- Sección 1: Datos de Ficha -->
+        <h3 style="font-size: 13px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin-bottom: 16px; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">1. Datos de la Propiedad</h3>
+
+        <div class="form-group">
+          <label class="form-label">Nombre del Inmueble *</label>
+          <input type="text" formControlName="name" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('name')?.invalid) || propertyForm.get('name')?.hasError('backend')" placeholder="Ej. Apartamento de Lujo en Edgewater">
+          <div class="error-message" *ngIf="isSubmitted && propertyForm.get('name')?.hasError('required')">El nombre es requerido.</div>
+          <div class="error-message" *ngIf="propertyForm.get('name')?.hasError('backend')">{{ propertyForm.get('name')?.getError('backend') }}</div>
+        </div>
+
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Tipo de Inmueble *</label>
+            <select formControlName="type" class="form-select" [class.is-invalid]="(isSubmitted && propertyForm.get('type')?.invalid) || propertyForm.get('type')?.hasError('backend')">
+              <option *ngFor="let opt of typeOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('type')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="propertyForm.get('type')?.hasError('backend')">{{ propertyForm.get('type')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Tipo Operación *</label>
+            <select formControlName="operationType" class="form-select" [class.is-invalid]="(isSubmitted && propertyForm.get('operationType')?.invalid) || propertyForm.get('operationType')?.hasError('backend')">
+              <option *ngFor="let opt of operationOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('operationType')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="propertyForm.get('operationType')?.hasError('backend')">{{ propertyForm.get('operationType')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <!-- Dirección -->
+        <div class="form-group">
+          <label class="form-label">Dirección Completa *</label>
+          <input type="text" formControlName="address" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('address')?.invalid) || propertyForm.get('address')?.hasError('backend')" placeholder="Dirección del inmueble...">
+          <div class="error-message" *ngIf="isSubmitted && propertyForm.get('address')?.hasError('required')">La dirección es requerida.</div>
+          <div class="error-message" *ngIf="propertyForm.get('address')?.hasError('backend')">{{ propertyForm.get('address')?.getError('backend') }}</div>
+        </div>
+
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Ciudad *</label>
+            <input type="text" formControlName="city" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('city')?.invalid) || propertyForm.get('city')?.hasError('backend')" placeholder="Ej. Loja o Newark">
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('city')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="propertyForm.get('city')?.hasError('backend')">{{ propertyForm.get('city')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Estado / Provincia / Zip *</label>
+            <div class="flex gap-2">
+              <input type="text" formControlName="state" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('state')?.invalid) || propertyForm.get('state')?.hasError('backend')" placeholder="NJ/Loja" style="width: 80px;">
+              <input type="text" formControlName="zipCode" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('zipCode')?.invalid) || propertyForm.get('zipCode')?.hasError('backend')" placeholder="07102">
+            </div>
+            <div class="error-message" *ngIf="isSubmitted && (propertyForm.get('state')?.invalid || propertyForm.get('zipCode')?.invalid)">Campos obligatorios</div>
+            <div class="error-message" *ngIf="propertyForm.get('state')?.hasError('backend')">{{ propertyForm.get('state')?.getError('backend') }}</div>
+            <div class="error-message" *ngIf="propertyForm.get('zipCode')?.hasError('backend')">{{ propertyForm.get('zipCode')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 0.8;">
+            <label class="form-label">País *</label>
+            <select formControlName="country" class="form-select" [class.is-invalid]="(isSubmitted && propertyForm.get('country')?.invalid) || propertyForm.get('country')?.hasError('backend')">
+              <option value="USA">EE.UU. (USA)</option>
+              <option value="Ecuador">Ecuador</option>
+            </select>
+            <div class="error-message" *ngIf="propertyForm.get('country')?.hasError('backend')">{{ propertyForm.get('country')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <!-- Specs y Medidas -->
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Área (Sq Ft) *</label>
+            <input type="number" formControlName="area" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('area')?.invalid) || propertyForm.get('area')?.hasError('backend')" placeholder="Ej. 1200">
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('area')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="propertyForm.get('area')?.hasError('backend')">{{ propertyForm.get('area')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Año Construcción *</label>
+            <input type="number" formControlName="yearBuilt" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('yearBuilt')?.invalid) || propertyForm.get('yearBuilt')?.hasError('backend')" placeholder="Ej. 2018">
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('yearBuilt')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="propertyForm.get('yearBuilt')?.hasError('backend')">{{ propertyForm.get('yearBuilt')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Habitaciones</label>
+            <input type="number" formControlName="bedrooms" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('bedrooms')?.invalid) || propertyForm.get('bedrooms')?.hasError('backend')">
+            <div class="error-message" *ngIf="propertyForm.get('bedrooms')?.hasError('backend')">{{ propertyForm.get('bedrooms')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Baños</label>
+            <input type="number" formControlName="bathrooms" class="form-control" step="0.5" [class.is-invalid]="(isSubmitted && propertyForm.get('bathrooms')?.invalid) || propertyForm.get('bathrooms')?.hasError('backend')">
+            <div class="error-message" *ngIf="propertyForm.get('bathrooms')?.hasError('backend')">{{ propertyForm.get('bathrooms')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <!-- Descripción -->
+        <div class="form-group">
+          <label class="form-label">Descripción Detallada *</label>
+          <textarea formControlName="description" rows="3" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('description')?.invalid) || propertyForm.get('description')?.hasError('backend')" placeholder="Describe los acabados, comodidades, cercanías..."></textarea>
+          <div class="error-message" *ngIf="isSubmitted && propertyForm.get('description')?.hasError('required')">La descripción es requerida.</div>
+          <div class="error-message" *ngIf="propertyForm.get('description')?.hasError('backend')">{{ propertyForm.get('description')?.getError('backend') }}</div>
+        </div>
+
+        <!-- Sección 2: Precios y Comisión -->
+        <h3 style="font-size: 13px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin-top: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">2. Valores Financieros</h3>
+
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Precio Actual ($ USD) *</label>
+            <input type="number" formControlName="currentPrice" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('currentPrice')?.invalid) || propertyForm.get('currentPrice')?.hasError('backend')" placeholder="500000">
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('currentPrice')?.invalid">Precio requerido</div>
+            <div class="error-message" *ngIf="propertyForm.get('currentPrice')?.hasError('backend')">{{ propertyForm.get('currentPrice')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Precio Anterior (Opcional)</label>
+            <input type="number" formControlName="previousPrice" class="form-control" placeholder="520000" [class.is-invalid]="(isSubmitted && propertyForm.get('previousPrice')?.invalid) || propertyForm.get('previousPrice')?.hasError('backend')">
+            <div class="error-message" *ngIf="propertyForm.get('previousPrice')?.hasError('backend')">{{ propertyForm.get('previousPrice')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Comisión Estimada ($ USD) *</label>
+            <input type="number" formControlName="estimatedCommission" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('estimatedCommission')?.invalid) || propertyForm.get('estimatedCommission')?.hasError('backend')" placeholder="15000">
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('estimatedCommission')?.invalid">Comisión requerida</div>
+            <div class="error-message" *ngIf="propertyForm.get('estimatedCommission')?.hasError('backend')">{{ propertyForm.get('estimatedCommission')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Estado de Publicación *</label>
+            <select formControlName="status" class="form-select" [class.is-invalid]="(isSubmitted && propertyForm.get('status')?.invalid) || propertyForm.get('status')?.hasError('backend')">
+              <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('status')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="propertyForm.get('status')?.hasError('backend')">{{ propertyForm.get('status')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <!-- Sección 3: Contacto propietario y responsable -->
+        <h3 style="font-size: 13px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin-top: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">3. Responsables y Propietario</h3>
+
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Propietario *</label>
+            <input type="text" formControlName="ownerName" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('ownerName')?.invalid) || propertyForm.get('ownerName')?.hasError('backend')" placeholder="Nombre completo...">
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('ownerName')?.invalid">Requerido</div>
+            <div class="error-message" *ngIf="propertyForm.get('ownerName')?.hasError('backend')">{{ propertyForm.get('ownerName')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Teléfono Propietario *</label>
+            <input type="text" formControlName="ownerPhone" (input)="onPhoneInput($event)" class="form-control" [class.is-invalid]="(isSubmitted && propertyForm.get('ownerPhone')?.invalid) || propertyForm.get('ownerPhone')?.hasError('backend')" placeholder="Ej. 0999999999">
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('ownerPhone')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('ownerPhone')?.hasError('invalidPhone')">{{ propertyForm.get('ownerPhone')?.getError('invalidPhone') }}</div>
+            <div class="error-message" *ngIf="propertyForm.get('ownerPhone')?.hasError('backend')">{{ propertyForm.get('ownerPhone')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Agente Inmobiliario *</label>
+            <select formControlName="agent" class="form-select" [class.is-invalid]="(isSubmitted && propertyForm.get('agent')?.invalid) || propertyForm.get('agent')?.hasError('backend')">
+              <option value="">Seleccionar Asesor</option>
+              <option *ngFor="let opt of agentOptions" [value]="opt.id">{{ opt.name }}</option>
+            </select>
+            <div class="error-message" *ngIf="isSubmitted && propertyForm.get('agent')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="propertyForm.get('agent')?.hasError('backend')">{{ propertyForm.get('agent')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Correo Propietario</label>
+            <input type="email" formControlName="ownerEmail" class="form-control" [class.is-invalid]="propertyForm.get('ownerEmail')?.hasError('backend')" placeholder="propietario@email.com">
+            <div class="error-message" *ngIf="propertyForm.get('ownerEmail')?.hasError('backend')">{{ propertyForm.get('ownerEmail')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <!-- Notas internas -->
+        <div class="form-group">
+          <label class="form-label">Notas Internas</label>
+          <textarea formControlName="notes" rows="2" class="form-control" [class.is-invalid]="propertyForm.get('notes')?.hasError('backend')" placeholder="Información adicional sobre el propietario o visitas..."></textarea>
+          <div class="error-message" *ngIf="propertyForm.get('notes')?.hasError('backend')">{{ propertyForm.get('notes')?.getError('backend') }}</div>
+        </div>
+
+        <!-- Sección 4: Galería de imágenes (Crear/Editar) -->
+        <div class="gallery-section" style="margin-top: 18px;">
+          <h3 class="gallery-title">Galería de imágenes</h3>
+
+          <!-- Si ya existe la propiedad (edición), mostramos la galería actual -->
+          <div *ngIf="isEditMode && selectedProperty && selectedProperty.id">
+            <div class="gallery-limit-info flex justify-between align-center">
+              <span>Imágenes actuales de la propiedad: <strong>{{ propertyImages.length }}</strong> de <strong>5</strong></span>
+              <span class="text-xs" style="color: var(--color-text-light);">Límite: Máximo 5 imágenes</span>
+            </div>
+
+            <!-- Grid de imágenes existentes -->
+            <div class="gallery-grid" *ngIf="propertyImages.length > 0">
+              <div class="gallery-item" *ngFor="let img of propertyImages; let idx = index">
+                <img [src]="img.url" class="gallery-item-img" alt="Imagen de propiedad">
+                
+                <!-- Badge principal -->
+                <span class="gallery-item-badge" *ngIf="img.isMain">Imagen principal</span>
+                <span class="gallery-order-badge">#{{ idx + 1 }}</span>
+
+                <!-- Acciones hover -->
+                <div class="gallery-item-actions">
+                  <div class="gallery-action-row justify-end">
+                    <button type="button" class="gallery-btn btn-danger" (click)="confirmDeleteImage(img._id!)" title="Eliminar">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <div class="gallery-action-row align-center justify-between">
+                    <!-- Mover orden -->
+                    <div class="flex gap-1">
+                      <button type="button" class="gallery-btn" [disabled]="idx === 0" (click)="moveImage(idx, 'up')" title="Subir posición">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7" />
+                        </svg>
+                      </button>
+                      <button type="button" class="gallery-btn" [disabled]="idx === propertyImages.length - 1" (click)="moveImage(idx, 'down')" title="Bajar posición">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <!-- Botón principal -->
+                    <button type="button" class="gallery-btn btn-success" *ngIf="!img.isMain" (click)="setAsMainImage(img._id!)" title="Marcar como principal">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Placeholder si no hay imágenes -->
+            <div class="gallery-placeholder" *ngIf="propertyImages.length === 0" style="margin-bottom: 16px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 28px; height: 28px; color: var(--color-text-light); margin-bottom: 6px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+              <span style="font-size: 12px; color: var(--color-text-muted);">Esta propiedad aún no tiene imágenes en la galería.</span>
+            </div>
+          </div>
+
+          <!-- Selector de archivos para agregar/subir imágenes (Disponible tanto en creación como en edición) -->
+          <div class="form-group" *ngIf="propertyImages.length < 5">
+            <label class="form-label" style="font-weight: 600;">
+              {{ isEditMode ? 'Seleccionar nuevas imágenes' : 'Seleccionar imágenes para la propiedad (Máx. 5)' }}
+            </label>
+            <input type="file" #formMultipleImageInput (change)="onMultipleImagesSelected($event)" style="display: none;" accept="image/jpeg,image/jpg,image/png,image/webp" multiple>
+            
+            <div class="upload-dropzone" (click)="formMultipleImageInput.click()" style="padding: 16px 12px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 20px; height: 20px; color: var(--color-accent); margin-bottom: 4px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              <span style="font-weight: 600; color: var(--color-primary); font-size: 11px;">Haz clic para seleccionar imágenes</span>
+              <span style="font-size: 9px; color: var(--color-text-light); margin-top: 2px;">
+                Formatos permitidos: JPG, PNG o WEBP (máx. 5MB). Máximo {{ 5 - (propertyImages.length + selectedFilesToUpload.length) }} restantes.
+              </span>
+            </div>
+
+            <!-- Previews de archivos seleccionados -->
+            <div class="gallery-upload-previews" *ngIf="uploadPreviews.length > 0">
+              <div class="gallery-preview-item" *ngFor="let preview of uploadPreviews; let pIdx = index">
+                <div class="gallery-preview-info">
+                  <img [src]="preview.url" class="gallery-preview-thumbnail">
+                  <div class="gallery-preview-details">
+                    <span class="gallery-preview-name" style="max-width: 150px;">{{ preview.name }}</span>
+                    <span class="gallery-preview-size">{{ preview.size }}</span>
+                  </div>
+                </div>
+                <button type="button" class="gallery-preview-remove" (click)="removePendingImage(pIdx)" title="Quitar">×</button>
+              </div>
+            </div>
+
+            <!-- Botón de subida rápida (Solo visible en Modo Edición si hay archivos seleccionados) -->
+            <div class="flex justify-end" *ngIf="isEditMode && selectedFilesToUpload.length > 0" style="margin-top: 10px;">
+              <button type="button" class="btn btn-primary btn-sm" (click)="uploadSelectedImages()" [disabled]="isSaving" style="padding: 6px 12px; font-size: 11px;">
+                <span *ngIf="isSaving" class="spinner-inline"></span>
+                Subir imágenes ahora
+              </button>
+            </div>
+            
+            <!-- Mensaje informativo en modo registro -->
+            <div *ngIf="!isEditMode && selectedFilesToUpload.length > 0" style="font-size: 11px; color: var(--color-success); font-weight: 600; margin-top: 8px;">
+              Las imágenes seleccionadas se guardarán automáticamente al registrar la propiedad.
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeFormModal()" [disabled]="isSaving">Cancelar</button>
+      <button class="btn btn-primary" (click)="onSubmitProperty()" [disabled]="isSaving">
+        <span *ngIf="isSaving" class="spinner-inline"></span>
+        {{ isSaving ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Registrar Propiedad') }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Detalle Completo de Propiedad -->
+<div class="modal-overlay" *ngIf="showDetailDrawer" (click)="closeDetailDrawer()">
+  <div class="modal-card animate-fade-in" style="max-width: 820px; max-height: 85vh; display: flex; flex-direction: column;" (click)="$event.stopPropagation()">
+    <div class="modal-header flex align-center justify-between" style="border-bottom: 1px solid var(--color-border); padding: 18px 24px;" *ngIf="selectedProperty">
+      <div>
+        <div class="flex align-center gap-2" style="margin-bottom: 6px;">
+          <span class="badge" [ngClass]="selectedProperty.operationType">{{ getOperationLabel(selectedProperty.operationType) }}</span>
+          <span class="badge" [ngClass]="'badge-' + selectedProperty.status">{{ getStatusLabel(selectedProperty.status) }}</span>
+        </div>
+        <h2 style="font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--color-primary); margin: 0; line-height: 1.2;">
+          {{ selectedProperty.name }}
+        </h2>
+        <p style="font-size: 13px; color: var(--color-text-muted); margin: 4px 0 0 0;" class="flex align-center gap-1">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px; color: var(--color-accent);">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25A7.5 7.5 0 0119.5 10.5z" />
+          </svg>
+          {{ selectedProperty.address }}, {{ selectedProperty.city }}, {{ selectedProperty.state }} ({{ selectedProperty.country }})
+        </p>
+      </div>
+      <button class="action-icon-btn btn-circle" (click)="closeDetailDrawer()" title="Cerrar" style="background: var(--color-bg-main); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 18px; height: 18px; color: var(--color-text-muted);">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Modal Body Split Layout -->
+    <div class="modal-body" style="padding: 24px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; background-color: var(--color-bg-card);" *ngIf="selectedProperty">
+      
+      <!-- Columna Izquierda: Imagen y Datos Financieros -->
+      <div class="flex flex-col gap-4">
+        <!-- Imagen de Portada con Placeholder SVG si está vacía, y adaptación inteligente blur-padding para cualquier formato (vertical/horizontal) -->
+        <div style="border-radius: var(--border-radius-md); overflow: hidden; height: 240px; border: 1px solid var(--color-border); position: relative; box-shadow: var(--shadow-sm); background-color: #E2E8F0;">
+          <div *ngIf="!selectedProperty.imageUrl" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); color: var(--color-text-muted);">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor" style="width: 48px; height: 48px; margin-bottom: 8px; color: var(--color-text-light);">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 18H21" />
+            </svg>
+            <span style="font-size: 13px; font-weight: 500; color: var(--color-text-muted);">Sin Imagen de Portada</span>
+          </div>
+          
+          <ng-container *ngIf="selectedProperty.imageUrl">
+            <!-- Blurred Background for non-clipping aspect ratio adaptation -->
+            <img [src]="selectedProperty.imageUrl" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(16px) brightness(0.6); transform: scale(1.15); pointer-events: none;">
+            <!-- Foreground Image (contain to show full image without cropping) -->
+            <img [src]="selectedProperty.imageUrl" alt="Property Image" style="position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain;">
+          </ng-container>
+
+          <span class="price-drop-badge" *ngIf="hasPriceDropped(selectedProperty)" style="position: absolute; bottom: 12px; right: 12px; font-size: 10px; font-weight: 700; background: var(--color-danger); color: white; padding: 4px 8px; border-radius: 4px; z-index: 2;">
+            ↓ {{ getPriceDropPercentage(selectedProperty) }}% REBAJADO
+          </span>
+        </div>
+
+        <!-- Tarjeta Financiera Premium -->
+        <div style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%); border-radius: var(--border-radius-md); padding: 20px; color: white; box-shadow: var(--shadow-md);">
+          <div style="margin-bottom: 16px;">
+            <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-light); font-weight: 600; display: block; margin-bottom: 2px;">Valor del Inmueble</span>
+            <div class="flex align-baseline gap-2 flex-wrap">
+              <span style="font-family: var(--font-display); font-size: 26px; font-weight: 700; color: #FFFFFF;">{{ selectedProperty.currentPrice | currency:'USD':'symbol':'1.0-0' }}</span>
+              <span style="font-size: 13px; text-decoration: line-through; color: var(--color-text-light);" *ngIf="selectedProperty.previousPrice">
+                {{ selectedProperty.previousPrice | currency:'USD':'symbol':'1.0-0' }}
+              </span>
+            </div>
+            <div *ngIf="hasPriceDropped(selectedProperty)" style="font-size: 11px; color: var(--color-success); font-weight: 600; margin-top: 4px;" class="flex align-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 12px; height: 12px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              </svg>
+              Rebaja de {{ selectedProperty.previousPrice! - selectedProperty.currentPrice | currency:'USD':'symbol':'1.0-0' }}
+            </div>
+          </div>
+          
+          <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 14px;">
+            <div class="flex justify-between align-center gap-3">
+              <div>
+                <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-light); font-weight: 600; display: block; margin-bottom: 2px;">Comisión Asesor</span>
+                <span style="font-family: var(--font-sans); font-size: 16px; font-weight: 700; color: var(--color-accent-gold);">
+                  {{ selectedProperty.estimatedCommission | currency:'USD':'symbol':'1.0-0' }}
+                </span>
+              </div>
+              <div style="text-align: right;">
+                <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-light); font-weight: 600; display: block; margin-bottom: 2px;">Asesor Responsable</span>
+                <span style="font-size: 13px; font-weight: 500; color: #FFFFFF;">{{ selectedProperty.agent }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Galería de imágenes (Detalle) -->
+        <div class="gallery-section" style="margin-top: 16px;">
+          <h3 class="gallery-title">Galería de imágenes</h3>
+
+          <!-- Galería actual -->
+          <div class="gallery-limit-info flex justify-between align-center">
+            <span>Imágenes de la propiedad: <strong>{{ propertyImages.length }}</strong> de <strong>5</strong></span>
+            <span class="text-xs" style="color: var(--color-text-light);">Límite: Máximo 5 imágenes</span>
+          </div>
+
+          <!-- Grid de imágenes existentes -->
+          <div class="gallery-grid" *ngIf="propertyImages.length > 0">
+            <div class="gallery-item" *ngFor="let img of propertyImages; let idx = index">
+              <img [src]="img.url" class="gallery-item-img" alt="Imagen de propiedad">
+              
+              <!-- Badge principal -->
+              <span class="gallery-item-badge" *ngIf="img.isMain">Imagen principal</span>
+              <span class="gallery-order-badge">#{{ idx + 1 }}</span>
+
+              <!-- Acciones hover -->
+              <div class="gallery-item-actions">
+                <div class="gallery-action-row justify-end">
+                  <button type="button" class="gallery-btn btn-danger" (click)="confirmDeleteImage(img._id!)" title="Eliminar">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <div class="gallery-action-row align-center justify-between">
+                  <!-- Mover orden -->
+                  <div class="flex gap-1">
+                    <button type="button" class="gallery-btn" [disabled]="idx === 0" (click)="moveImage(idx, 'up')" title="Subir posición">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button type="button" class="gallery-btn" [disabled]="idx === propertyImages.length - 1" (click)="moveImage(idx, 'down')" title="Bajar posición">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <!-- Botón principal -->
+                  <button type="button" class="gallery-btn btn-success" *ngIf="!img.isMain" (click)="setAsMainImage(img._id!)" title="Marcar como principal">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Placeholder si no hay imágenes -->
+          <div class="gallery-placeholder" *ngIf="propertyImages.length === 0" style="margin-bottom: 16px;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 28px; height: 28px; color: var(--color-text-light); margin-bottom: 6px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+            </svg>
+            <span style="font-size: 12px; color: var(--color-text-muted);">Esta propiedad aún no tiene imágenes en la galería.</span>
+          </div>
+
+          <!-- Selector de archivos si hay slots disponibles -->
+          <div class="form-group" *ngIf="propertyImages.length < 5">
+            <label class="form-label" style="font-weight: 600;">Subir nuevas imágenes</label>
+            <input type="file" #detailMultipleImageInput (change)="onMultipleImagesSelected($event)" style="display: none;" accept="image/jpeg,image/jpg,image/png,image/webp" multiple>
+            
+            <div class="upload-dropzone" (click)="detailMultipleImageInput.click()" style="padding: 16px 12px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 20px; height: 20px; color: var(--color-accent); margin-bottom: 4px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              <span style="font-weight: 600; color: var(--color-primary); font-size: 11px;">Haz clic para seleccionar imágenes</span>
+              <span style="font-size: 9px; color: var(--color-text-light); margin-top: 2px;">Formatos permitidos: JPG, PNG o WEBP (máx. 5MB). Máximo {{ 5 - propertyImages.length }} restantes.</span>
+            </div>
+
+            <!-- Previews de archivos seleccionados -->
+            <div class="gallery-upload-previews" *ngIf="uploadPreviews.length > 0">
+              <div class="gallery-preview-item" *ngFor="let preview of uploadPreviews; let pIdx = index">
+                <div class="gallery-preview-info">
+                  <img [src]="preview.url" class="gallery-preview-thumbnail">
+                  <div class="gallery-preview-details">
+                    <span class="gallery-preview-name" style="max-width: 150px;">{{ preview.name }}</span>
+                    <span class="gallery-preview-size">{{ preview.size }}</span>
+                  </div>
+                </div>
+                <button type="button" class="gallery-preview-remove" (click)="removePendingImage(pIdx)" title="Quitar">×</button>
+              </div>
+            </div>
+
+            <!-- Botón de subida -->
+            <div class="flex justify-end" *ngIf="selectedFilesToUpload.length > 0" style="margin-top: 10px;">
+              <button type="button" class="btn btn-primary btn-sm" (click)="uploadSelectedImages()" [disabled]="isSaving" style="padding: 6px 12px; font-size: 11px;">
+                <span *ngIf="isSaving" class="spinner-inline"></span>
+                Subir imágenes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna Derecha: Detalles Inmobiliarios y Propietario -->
+      <div class="flex flex-col gap-5">
+        
+        <!-- Ficha Técnica -->
+        <div>
+          <h4 style="font-size: 11px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin: 0 0 10px 0; letter-spacing: 0.05em; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">
+            Ficha Técnica
+          </h4>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+            
+            <!-- Tipo -->
+            <div style="background: var(--color-bg-main); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 18px; height: 18px; color: var(--color-text-muted); flex-shrink: 0;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+              </svg>
+              <div>
+                <span style="font-size: 9px; color: var(--color-text-muted); display: block; text-transform: uppercase; font-weight: 600;">Tipo de Inmueble</span>
+                <span style="font-size: 12px; font-weight: 600; color: var(--color-text-main); text-transform: capitalize;">{{ getTypeLabel(selectedProperty.type) }}</span>
+              </div>
+            </div>
+
+            <!-- Área -->
+            <div style="background: var(--color-bg-main); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 18px; height: 18px; color: var(--color-text-muted); flex-shrink: 0;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v16.5m16.5-16.5v16.5m-16.5-16.5h16.5m-16.5 16.5h16.5" />
+              </svg>
+              <div>
+                <span style="font-size: 9px; color: var(--color-text-muted); display: block; text-transform: uppercase; font-weight: 600;">Área Construida</span>
+                <span style="font-size: 12px; font-weight: 600; color: var(--color-text-main);">{{ selectedProperty.area }} sq ft</span>
+              </div>
+            </div>
+
+            <!-- Hab. -->
+            <div *ngIf="(selectedProperty.bedrooms || 0) > 0" style="background: var(--color-bg-main); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 18px; height: 18px; color: var(--color-text-muted); flex-shrink: 0;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003" />
+              </svg>
+              <div>
+                <span style="font-size: 9px; color: var(--color-text-muted); display: block; text-transform: uppercase; font-weight: 600;">Dormitorios</span>
+                <span style="font-size: 12px; font-weight: 600; color: var(--color-text-main);">{{ selectedProperty.bedrooms }} Hab.</span>
+              </div>
+            </div>
+
+            <!-- Baños -->
+            <div *ngIf="(selectedProperty.bathrooms || 0) > 0" style="background: var(--color-bg-main); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 18px; height: 18px; color: var(--color-text-muted); flex-shrink: 0;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15.75v.008h-.008v-.008H8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+              <div>
+                <span style="font-size: 9px; color: var(--color-text-muted); display: block; text-transform: uppercase; font-weight: 600;">Baños Completos</span>
+                <span style="font-size: 12px; font-weight: 600; color: var(--color-text-main);">{{ selectedProperty.bathrooms }} Baños</span>
+              </div>
+            </div>
+
+            <!-- Año -->
+            <div style="background: var(--color-bg-main); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 18px; height: 18px; color: var(--color-text-muted); flex-shrink: 0;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" />
+              </svg>
+              <div>
+                <span style="font-size: 9px; color: var(--color-text-muted); display: block; text-transform: uppercase; font-weight: 600;">Año Construcción</span>
+                <span style="font-size: 12px; font-weight: 600; color: var(--color-text-main);">{{ selectedProperty.yearBuilt }}</span>
+              </div>
+            </div>
+
+            <!-- Terreno -->
+            <div *ngIf="selectedProperty.lotSize" style="background: var(--color-bg-main); padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 18px; height: 18px; color: var(--color-text-muted); flex-shrink: 0;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75h6m-6 3h6m-6 3h6m-6 3h6M3.75 2.25h16.5a1.5 1.5 0 011.5 1.5v16.5a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5V3.75a1.5 1.5 0 011.5-1.5z" />
+              </svg>
+              <div>
+                <span style="font-size: 9px; color: var(--color-text-muted); display: block; text-transform: uppercase; font-weight: 600;">Terreno Total</span>
+                <span style="font-size: 12px; font-weight: 600; color: var(--color-text-main);">{{ selectedProperty.lotSize }} sq ft</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Descripción Comercial -->
+        <div>
+          <h4 style="font-size: 11px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin: 0 0 6px 0; letter-spacing: 0.05em; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">
+            Descripción Comercial
+          </h4>
+          <p style="font-size: 13px; color: var(--color-text-muted); line-height: 1.5; text-align: justify; margin: 0;">
+            {{ selectedProperty.description }}
+          </p>
+        </div>
+
+        <!-- Contacto del Propietario -->
+        <div>
+          <h4 style="font-size: 11px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin: 0 0 10px 0; letter-spacing: 0.05em; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">
+            Contacto del Propietario
+          </h4>
+          <div style="background-color: var(--color-bg-main); border: 1px solid var(--color-border); border-radius: var(--border-radius-md); padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0, 0, 0, 0.05); padding-bottom: 6px;">
+              <span style="font-size: 12px; color: var(--color-text-muted); font-weight: 500;">Nombre del Propietario</span>
+              <span style="font-size: 13px; color: var(--color-text-main); font-weight: 600;">{{ selectedProperty.ownerName }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0, 0, 0, 0.05); padding-bottom: 6px;">
+              <span style="font-size: 12px; color: var(--color-text-muted); font-weight: 500;">Teléfono de Contacto</span>
+              <a [href]="'tel:' + selectedProperty.ownerPhone" 
+                 style="font-size: 13px; color: var(--color-accent); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px;">
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 12px; height: 12px;">
+                   <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.53-5.168-3.873-6.698-6.698l1.293-.97c.362-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                 </svg>
+                 {{ selectedProperty.ownerPhone }}
+              </a>
+            </div>
+            <div *ngIf="selectedProperty.ownerEmail" style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 12px; color: var(--color-text-muted); font-weight: 500;">Correo Electrónico</span>
+              <a [href]="'mailto:' + selectedProperty.ownerEmail" style="font-size: 13px; color: var(--color-accent); text-decoration: none; font-weight: 500;">{{ selectedProperty.ownerEmail }}</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notas Internas -->
+        <div *ngIf="selectedProperty.notes">
+          <h4 style="font-size: 11px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin: 0 0 6px 0; letter-spacing: 0.05em; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">
+            Notas Internas
+          </h4>
+          <div style="background-color: var(--color-warning-bg); border-left: 4px solid var(--color-warning); padding: 10px 12px; border-radius: 4px; font-size: 12px; color: var(--color-text-main); line-height: 1.4;">
+            {{ selectedProperty.notes }}
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: 12px; background-color: var(--color-bg-main);" *ngIf="selectedProperty">
+      <button class="btn btn-secondary" (click)="openEditModal(selectedProperty!)">Editar Ficha</button>
+      <button class="btn btn-primary" (click)="closeDetailDrawer()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar Eliminar Propiedad -->
+<div class="confirm-modal-overlay" *ngIf="showDeleteConfirm" (click)="closeDeleteConfirm()">
+  <div class="confirm-modal" (click)="$event.stopPropagation()">
+    <h3 class="confirm-title">Confirmar Eliminación</h3>
+    <p class="confirm-text">¿Estás seguro de que deseas eliminar esta propiedad inmobiliaria? Esta acción quitará la propiedad de todo el catálogo y no se puede recuperar.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" (click)="closeDeleteConfirm()">Cancelar</button>
+      <button class="btn btn-danger" (click)="deleteProperty()">Eliminar Permanentemente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar Eliminar Imagen de Propiedad -->
+<div class="confirm-modal-overlay" *ngIf="showImageDeleteConfirm" (click)="closeImageDeleteConfirm()">
+  <div class="confirm-modal" (click)="$event.stopPropagation()">
+    <h3 class="confirm-title">Confirmar Eliminación</h3>
+    <p class="confirm-text">¿Estás seguro de que deseas eliminar esta imagen de la propiedad? Esta acción no se puede deshacer.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" (click)="closeImageDeleteConfirm()">Cancelar</button>
+      <button class="btn btn-danger" (click)="deletePropertyImage()">Eliminar Permanentemente</button>
+    </div>
+  </div>
+</div>

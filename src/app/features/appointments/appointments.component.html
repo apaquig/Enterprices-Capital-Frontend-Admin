@@ -1,0 +1,163 @@
+<div class="appointments-container">
+  <div class="calendar-header-card">
+    <div class="header-left">
+      <h2>{{ monthNames[currentDate.getMonth()] }} {{ currentDate.getFullYear() }}</h2>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-secondary" (click)="setToday()">Hoy</button>
+      <div class="nav-btn-group">
+        <button class="nav-btn" (click)="prevMonth()" title="Mes anterior">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+        <button class="nav-btn" (click)="nextMonth()" title="Mes siguiente">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <span>Cargando agenda...</span>
+  </div>
+
+  <!-- Calendar Grid -->
+  <div class="calendar-grid-card" *ngIf="!isLoading">
+    <div class="weekdays-row">
+      <div class="weekday-cell" *ngFor="let day of weekDays">{{ day }}</div>
+    </div>
+
+    <div class="days-grid">
+      <div 
+        class="day-cell" 
+        *ngFor="let day of calendarDays" 
+        [class.other-month]="!day.isCurrentMonth"
+        [class.is-today]="day.isToday"
+      >
+        <div class="day-number-row">
+          <span class="day-num">{{ day.dayNum }}</span>
+        </div>
+        <div class="day-appointments-list">
+          <div 
+            class="appointment-pill" 
+            *ngFor="let appt of day.appointments" 
+            [class]="getStatusClass(appt.status)"
+            (click)="openAppointmentDetail(appt)"
+          >
+            <span class="appt-time">{{ formatTime(appt.dateTime) }}</span>
+            <span class="appt-client">{{ appt.client?.firstName }} {{ appt.client?.lastName?.split(' ')[0] }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Drawer Detail Overlay -->
+<div class="drawer-overlay" *ngIf="showDrawer" (click)="closeDrawer()"></div>
+
+<!-- Drawer Detail Container -->
+<div class="drawer" [class.open]="showDrawer" *ngIf="selectedAppointment">
+  <div class="drawer-header">
+    <h3>Detalle de la Cita</h3>
+    <button class="close-btn" (click)="closeDrawer()" title="Cerrar">&times;</button>
+  </div>
+
+  <div class="drawer-body">
+    <!-- Client Section -->
+    <div class="drawer-section">
+      <h4>Cliente</h4>
+      <div class="info-card">
+        <div class="info-row">
+          <span class="info-label">Nombre:</span>
+          <span class="info-val highlight">{{ selectedAppointment.client?.firstName }} {{ selectedAppointment.client?.lastName }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Teléfono:</span>
+          <span class="info-val">{{ selectedAppointment.client?.phone }}</span>
+        </div>
+        <div class="info-row" *ngIf="selectedAppointment.client?.email">
+          <span class="info-label">Correo:</span>
+          <span class="info-val">{{ selectedAppointment.client?.email }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Appointment Info Section -->
+    <div class="drawer-section">
+      <h4>Detalles de la Cita</h4>
+      <div class="info-card">
+        <div class="info-row">
+          <span class="info-label">Servicio:</span>
+          <span class="info-val">{{ selectedAppointment.service?.name }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Fecha y Hora:</span>
+          <span class="info-val">{{ selectedAppointment.dateTime | date:'dd/MM/yyyy':'UTC' }} a las {{ formatTime(selectedAppointment.dateTime) }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Modalidad:</span>
+          <span class="info-val">{{ selectedAppointment.meetingType === 'in_person' ? 'Presencial en Oficina' : 'Virtual (Videollamada)' }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Estado:</span>
+          <span class="badge" [class]="getStatusClass(selectedAppointment.status)">
+            {{ getStatusLabel(selectedAppointment.status) }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes Section -->
+    <div class="drawer-section" *ngIf="selectedAppointment.notes">
+      <h4>Notas de la Reserva</h4>
+      <div class="notes-box">
+        {{ selectedAppointment.notes }}
+      </div>
+    </div>
+
+    <!-- Actions Section -->
+    <div class="drawer-section actions-section">
+      <h4>Acciones de Estado</h4>
+      <div class="actions-grid">
+        <button 
+          class="btn btn-success" 
+          *ngIf="selectedAppointment.status !== 'confirmed' && selectedAppointment.status !== 'completed'"
+          [disabled]="isSaving"
+          (click)="updateAppointmentStatus('confirmed')"
+        >
+          Confirmar
+        </button>
+        <button 
+          class="btn btn-info" 
+          *ngIf="selectedAppointment.status !== 'completed'"
+          [disabled]="isSaving"
+          (click)="updateAppointmentStatus('completed')"
+        >
+          Marcar Completada
+        </button>
+        <button 
+          class="btn btn-warning" 
+          *ngIf="selectedAppointment.status !== 'no_show' && selectedAppointment.status !== 'completed'"
+          [disabled]="isSaving"
+          (click)="updateAppointmentStatus('no_show')"
+        >
+          Marcar Ausente
+        </button>
+        <button 
+          class="btn btn-danger" 
+          *ngIf="selectedAppointment.status !== 'cancelled' && selectedAppointment.status !== 'completed'"
+          [disabled]="isSaving"
+          (click)="updateAppointmentStatus('cancelled')"
+        >
+          Cancelar Cita
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

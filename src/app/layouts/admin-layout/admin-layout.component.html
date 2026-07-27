@@ -1,0 +1,185 @@
+<div class="admin-shell">
+  <!-- Mobile Sidebar Overlay -->
+  <div class="mobile-sidebar-overlay" *ngIf="mobileSidebarOpen" (click)="toggleMobileSidebar()"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-open]="mobileSidebarOpen">
+    <div class="sidebar-header">
+      <a [routerLink]="isAdmin ? '/dashboard' : '/clients'" class="logo-container">
+        <img src="assets/logo.png" alt="Logo" class="logo-icon-img" />
+        <span class="logo-text" *ngIf="!sidebarCollapsed">Enterprises Capital</span>
+      </a>
+    </div>
+ 
+    <nav class="sidebar-nav">
+      <a routerLink="/dashboard" routerLinkActive="active" class="nav-item" title="Dashboard" *ngIf="isAdmin">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+        </svg>
+        <span *ngIf="!sidebarCollapsed">Dashboard</span>
+      </a>
+ 
+      <a routerLink="/clients" routerLinkActive="active" class="nav-item" title="Clientes / CRM">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+        </svg>
+        <span *ngIf="!sidebarCollapsed">Clientes / CRM</span>
+      </a>
+ 
+      <a routerLink="/prospects-sheet" routerLinkActive="active" class="nav-item" title="Plantilla Prospectos">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
+        </svg>
+        <span *ngIf="!sidebarCollapsed">Plantilla Prospectos</span>
+      </a>
+ 
+      <a routerLink="/services" routerLinkActive="active" class="nav-item" title="Servicios" *ngIf="isAdmin">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.03 0 1.9.693 2.166 1.638m-7.377 0A48.536 48.536 0 0112 3m-9 3.75h.008v.008H3V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3 12h.008v.008H3V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25H3v.008h.008v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+        <span *ngIf="!sidebarCollapsed">Servicios</span>
+      </a>
+ 
+      <a routerLink="/real-estate" routerLinkActive="active" class="nav-item" title="Real Estate" *ngIf="isAdmin">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 0l-5.25 1.91m5.25-1.91v7.5M21 7.5l-3.75-1.364M3.75 21V10.75m0 0L7.5 12m-3.75-1.25V9m3.75 3V9.75m0 0l3-1.091M9 7.5v.008H9V7.5zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM15 12.75v.008h-.008v-.008H15zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM15 15.75v.008h-.008v-.008H15zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM18 12.75v.008h-.008v-.008H18zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM18 15.75v.008h-.008v-.008H18zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+        <span *ngIf="!sidebarCollapsed">Real Estate</span>
+      </a>
+ 
+      <a routerLink="/appointments" routerLinkActive="active" class="nav-item" title="Citas / Agenda" *ngIf="isAdmin">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+        </svg>
+        <span *ngIf="!sidebarCollapsed">Citas / Agenda</span>
+      </a>
+ 
+      <a routerLink="/gallery" routerLinkActive="active" class="nav-item" title="Galería" *ngIf="isAdmin">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+        <span *ngIf="!sidebarCollapsed">Galería</span>
+      </a>
+
+      <a routerLink="/settings" routerLinkActive="active" class="nav-item" title="Configuración" *ngIf="isAdmin">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.43l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.991l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.645-.869l.214-1.28z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span *ngIf="!sidebarCollapsed">Configuración</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer" *ngIf="currentUser">
+      <img *ngIf="currentUser.avatarUrl" [src]="currentUser.avatarUrl" alt="Avatar" class="admin-avatar" style="object-fit: cover;">
+      <div *ngIf="!currentUser.avatarUrl" class="admin-avatar-initials" style="width: 40px; height: 40px; border-radius: 50%; background-color: var(--color-accent); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; border: 2px solid var(--color-primary); flex-shrink: 0;">
+        {{ getUserInitials() }}
+      </div>
+      <div class="admin-info" *ngIf="!sidebarCollapsed">
+        <span class="admin-name">{{ currentUser.name }}</span>
+        <span class="admin-role">{{ currentUser.role }}</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Panel -->
+  <main class="main-panel">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <!-- Collapse Sidebar Desktop Button -->
+        <button class="collapse-btn" (click)="toggleSidebar()" title="Colapsar menú">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+        <!-- Mobile Sidebar Toggle -->
+        <button class="hamburger-btn" (click)="toggleMobileSidebar()" title="Menú">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+
+
+      </div>
+
+      <div class="topbar-right">
+        <!-- Notifications -->
+        <div style="position: relative;">
+          <button class="notifications-trigger" (click)="toggleNotifications()" title="Notificaciones">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 22px; height: 22px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
+            <span class="badge-count" *ngIf="unreadNotificationsCount > 0">{{ unreadNotificationsCount }}</span>
+          </button>
+
+          <!-- Notifications Dropdown -->
+          <div class="dropdown-menu" *ngIf="notificationsOpen">
+            <div class="dropdown-header">
+              <h4>Notificaciones</h4>
+              <button class="btn btn-secondary btn-sm" (click)="markAllNotificationsRead()" style="padding: 2px 8px; font-size: 11px;">Marcar leídas</button>
+            </div>
+            <div class="dropdown-body">
+              <div class="notification-item" *ngFor="let notif of notifications" [class.unread]="notif.unread">
+                <span class="notification-text">{{ notif.text }}</span>
+                <span class="notification-time">{{ notif.time }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Profile Dropdown -->
+        <div style="position: relative;" *ngIf="currentUser">
+          <button class="profile-trigger" (click)="toggleProfileDropdown()">
+            <img *ngIf="currentUser.avatarUrl" [src]="currentUser.avatarUrl" alt="Avatar" class="admin-avatar" style="width: 32px; height: 32px; object-fit: cover;">
+            <div *ngIf="!currentUser.avatarUrl" class="admin-avatar-initials-sm" style="width: 32px; height: 32px; border-radius: 50%; background-color: var(--color-accent); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; border: 2px solid var(--color-primary); flex-shrink: 0;">
+              {{ getUserInitials() }}
+            </div>
+            <span style="font-size: 13px; font-weight: 500;" class="search-bar">{{ currentUser.name }}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          <!-- Profile Dropdown Menu -->
+          <div class="dropdown-menu profile-dropdown" *ngIf="profileDropdownOpen">
+            <div class="profile-header-info">
+              <span class="name">{{ currentUser.name }}</span>
+              <span class="email">{{ currentUser.email }}</span>
+            </div>
+            <a routerLink="/settings" class="profile-item" (click)="profileDropdownOpen = false">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+              Ver Perfil
+            </a>
+            <button class="profile-item logout-item" (click)="logout()">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+              </svg>
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="content-container">
+      <!-- Breadcrumbs -->
+      <nav class="breadcrumbs">
+        <a routerLink="/dashboard" class="breadcrumb-home">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px; margin-right: 4px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+          </svg>
+          Inicio
+        </a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">{{ currentPathLabel }}</span>
+      </nav>
+
+      <!-- Outlet content -->
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

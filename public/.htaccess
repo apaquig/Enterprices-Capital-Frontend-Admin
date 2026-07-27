@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  
+  # If the requested file or directory exists, serve it normally
+  RewriteCond %{REQUEST_FILENAME} -s [OR]
+  RewriteCond %{REQUEST_FILENAME} -l [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^.*$ - [NC,L]
+  
+  # Otherwise, redirect all other requests to index.html
+  RewriteRule ^(.*)$ index.html [NC,L]
+</IfModule>

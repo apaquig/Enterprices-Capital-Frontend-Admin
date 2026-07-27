@@ -1,0 +1,7 @@
+❯ Building...
+▲ [WARNING] NG8113: RouterLink is not used within the template of DashboardComponent [plugin angular-compiler]
+
+    src/app/features/dashboard/dashboard.component.ts:13:26:
+      13 │   imports: [CommonModule, RouterLink],
+         ╵                           ~~~~~~~~~~
+

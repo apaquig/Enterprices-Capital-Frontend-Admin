@@ -1,0 +1,916 @@
+<div class="animate-fade-in">
+  <!-- Section Title -->
+  <div class="flex align-center justify-between" style="margin-bottom: 24px;">
+    <div>
+      <h1 style="font-size: 26px; font-weight: 700; margin-bottom: 4px;">Clientes / CRM</h1>
+      <p style="color: var(--color-text-muted);">Administra la base de clientes, prospectos y asignación de servicios de la compañía.</p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <!-- WhatsApp Status Indicator -->
+      <div class="wa-status-badge" style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background-color: #f1f5f9; border: 1px solid #e2e8f0; color: #475569;">
+        <span *ngIf="waStatus === 'connected'" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+        <span *ngIf="waStatus !== 'connected'" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444;"></span>
+        
+        <span *ngIf="waStatus === 'connected'">WhatsApp Vinculado (+{{ waConnectedPhone }})</span>
+        <span *ngIf="waStatus !== 'connected'">WhatsApp Desconectado</span>
+        
+        <button type="button" *ngIf="waStatus === 'connected'" (click)="logoutWhatsApp()" class="btn-inline-action" style="padding: 2px 6px; font-size: 10px; background-color: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; border-radius: 4px; cursor: pointer; font-weight: 700;">Desconectar</button>
+        <button type="button" *ngIf="waStatus !== 'connected'" (click)="openWhatsAppLinkModal()" class="btn-inline-action" style="padding: 2px 6px; font-size: 10px; background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; border-radius: 4px; cursor: pointer; font-weight: 700;">Vincular</button>
+      </div>
+
+      <button class="btn btn-primary" (click)="openCreateDrawer()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        Nuevo Cliente
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter & Search Bar -->
+  <div class="filter-bar">
+    <div class="search-input-wrapper">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.602 10.602z" />
+      </svg>
+      <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" class="form-control" placeholder="Buscar por nombre, teléfono, correo...">
+    </div>
+
+    <!-- Creator Filter (Admin only) -->
+    <select [(ngModel)]="filterCreator" (change)="applyFilters()" class="form-select filter-select" *ngIf="isAdmin" style="min-width: 180px; border: 1.5px solid var(--color-primary);">
+      <option value="">Todos los Asesores</option>
+      <option *ngFor="let agent of agentOptions" [value]="agent.id">{{ agent.name }}</option>
+    </select>
+
+    <!-- Status Filter -->
+    <select [(ngModel)]="filterStatus" (change)="applyFilters()" class="form-select filter-select">
+      <option value="">Todos los Estados</option>
+      <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+    </select>
+
+    <!-- Source Filter -->
+    <select [(ngModel)]="filterSource" (change)="applyFilters()" class="form-select filter-select">
+      <option value="">Todas las Fuentes</option>
+      <option *ngFor="let opt of sourceOptions" [value]="opt.value">{{ opt.label }}</option>
+    </select>
+
+    <!-- Service Filter -->
+    <select [(ngModel)]="filterService" (change)="applyFilters()" class="form-select filter-select" style="width: 200px;">
+      <option value="">Todos los Servicios</option>
+      <option *ngFor="let srv of servicesList" [value]="srv.id">{{ srv.name }}</option>
+    </select>
+  </div>
+
+  <!-- CRM Table -->
+  <div class="table-responsive">
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th style="width: 40px; text-align: center;">
+            <input type="checkbox" [checked]="areAllSelected()" (change)="toggleSelectAll($event)" class="form-checkbox">
+          </th>
+          <th>Nombre Cliente</th>
+          <th>Teléfono / Correo</th>
+          <th>Estado</th>
+          <th>Prioridad</th>
+          <th>Servicios Asignados</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let client of filteredClients">
+          <!-- Select Checkbox -->
+          <td style="text-align: center; vertical-align: middle;">
+            <input type="checkbox" [checked]="isClientSelected(client)" (change)="toggleClientSelection(client, $event)" class="form-checkbox">
+          </td>
+          <!-- Name -->
+          <td>
+            <div style="font-weight: 600; color: var(--color-primary);">{{ client.firstName }} {{ client.lastName }}</div>
+            <div style="font-size: 11px; color: var(--color-text-muted);">Creado el {{ client.createdAt | date:'shortDate' }}</div>
+          </td>
+          <!-- Contact -->
+          <td>
+            <div>{{ client.phone }}</div>
+            <div style="font-size: 12px; color: var(--color-text-muted);" *ngIf="client.email">{{ client.email }}</div>
+          </td>
+          <!-- Status -->
+          <td>
+            <span class="badge" [ngClass]="'badge-' + (client.status || '')">
+              {{ getStatusLabel(client.status) }}
+            </span>
+          </td>
+          <!-- Priority -->
+          <td>
+            <span class="badge" [ngClass]="'badge-' + client.priority">
+              {{ client.priority }}
+            </span>
+          </td>
+          <!-- Services Count -->
+          <td>
+            <div style="font-weight: 500;">
+              {{ client.assignedServices?.length || 0 }} {{ (client.assignedServices?.length || 0) === 1 ? 'servicio' : 'servicios' }}
+            </div>
+            <div style="font-size: 11px; color: var(--color-text-muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              {{ (client.assignedServices?.length || 0) > 0 ? getServiceName(client.assignedServices?.[0]) : 'Ninguno' }}
+              <span *ngIf="(client.assignedServices?.length || 0) > 1">, (+{{ (client.assignedServices?.length || 0) - 1 }} más)</span>
+            </div>
+          </td>
+          <!-- Actions -->
+          <td>
+            <div class="table-actions">
+              <!-- View Detail -->
+              <button class="action-icon-btn" (click)="openDetailDrawer(client)" title="Ver Ficha Completa">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.43 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+              <!-- Edit -->
+              <button class="action-icon-btn" (click)="openEditDrawer(client)" title="Editar Información">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                </svg>
+              </button>
+              <!-- WhatsApp Quick Link -->
+              <a [href]="getWhatsAppLink(client.phone)" target="_blank" class="action-icon-btn whatsapp-btn" title="Contactar por WhatsApp">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.488 1.459 5.41 1.46h.007c5.441 0 9.869-4.43 9.872-9.875.001-2.639-1.02-5.12-2.875-6.979C17.2 1.905 14.717.884 12.077.883c-5.448 0-9.876 4.43-9.88 9.876-.002 1.983.518 3.923 1.505 5.644l-.997 3.64 3.734-.98v.006z" />
+                </svg>
+              </a>
+              <!-- Delete -->
+              <button class="action-icon-btn delete-btn" (click)="confirmDeleteClient(client.id || '')" title="Eliminar Cliente">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+        <tr *ngIf="isLoading">
+          <td colspan="7" style="text-align: center; padding: 40px;">
+            <span class="spinner-lg"></span>
+            <p style="margin-top: 12px; font-weight: 500; color: var(--color-text-muted);">Cargando clientes...</p>
+          </td>
+        </tr>
+        <tr *ngIf="!isLoading && filteredClients.length === 0">
+          <td colspan="7" style="text-align: center; padding: 40px; color: var(--color-text-muted);">
+            No se encontraron clientes que coincidan con los filtros de búsqueda.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pagination-wrapper" *ngIf="!isLoading && pagination.totalPages > 1" style="margin-top: 16px;">
+    <div>
+      Mostrando {{ filteredClients.length }} de {{ pagination.total }} clientes registrados.
+    </div>
+    <div class="pagination-btn-group">
+      <button class="pagination-btn" [disabled]="pagination.page === 1" (click)="onPageChange(pagination.page - 1)">
+        Anterior
+      </button>
+      <ng-container *ngFor="let p of getPagesArray()">
+        <button *ngIf="p !== '...'" class="pagination-btn"
+                [class.active]="pagination.page === p" (click)="onPageChange(+p)">
+          {{ p }}
+        </button>
+        <span *ngIf="p === '...'" class="pagination-ellipsis">…</span>
+      </ng-container>
+      <button class="pagination-btn" [disabled]="pagination.page === pagination.totalPages" (click)="onPageChange(pagination.page + 1)">
+        Siguiente
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Drawer: Formulario Crear/Editar Cliente -->
+<div class="drawer-overlay" *ngIf="showFormDrawer" (click)="closeFormDrawer()">
+  <div class="drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div class="drawer-header-left">
+        <h2 class="drawer-title">{{ isEditMode ? 'Editar Cliente' : 'Registrar Nuevo Cliente' }}</h2>
+        <p class="drawer-subtitle">{{ isEditMode ? 'Actualiza los datos del cliente seleccionado.' : 'Completa la información básica para registrar el cliente.' }}</p>
+      </div>
+      <button class="action-icon-btn" (click)="closeFormDrawer()" title="Cerrar">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="drawer-body">
+      <!-- General Error Alert -->
+      <div class="alert alert-danger" *ngIf="errorMessage" style="margin-bottom: 16px; font-size: 13px;">
+        <div style="font-weight: 600;">{{ errorMessage }}</div>
+        <ul style="margin: 6px 0 0 0; padding-left: 20px;" *ngIf="validationErrors && validationErrors.length > 0">
+          <li *ngFor="let err of validationErrors">
+            <strong>{{ err.label }}:</strong> {{ err.message }}
+          </li>
+        </ul>
+      </div>
+
+      <form [formGroup]="clientForm" (ngSubmit)="onSubmitClient()">
+        
+        <!-- Sección 1: Información Personal -->
+        <h3 style="font-size: 13px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin-bottom: 16px; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">1. Datos Personales</h3>
+        
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Nombre *</label>
+            <input type="text" formControlName="firstName" class="form-control" placeholder="Ej. Juan" [class.is-invalid]="clientForm.get('firstName')?.invalid && (isFormSubmitted || clientForm.get('firstName')?.touched || clientForm.get('firstName')?.hasError('backend'))">
+            <div class="error-message" *ngIf="isFormSubmitted && clientForm.get('firstName')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="clientForm.get('firstName')?.hasError('backend')">{{ clientForm.get('firstName')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Apellido *</label>
+            <input type="text" formControlName="lastName" class="form-control" placeholder="Ej. Pérez" [class.is-invalid]="clientForm.get('lastName')?.invalid && (isFormSubmitted || clientForm.get('lastName')?.touched || clientForm.get('lastName')?.hasError('backend'))">
+            <div class="error-message" *ngIf="isFormSubmitted && clientForm.get('lastName')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="clientForm.get('lastName')?.hasError('backend')">{{ clientForm.get('lastName')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Teléfono *</label>
+            <input type="text" formControlName="phone" class="form-control" placeholder="+1 201-555-0100" [class.is-invalid]="clientForm.get('phone')?.invalid && (isFormSubmitted || clientForm.get('phone')?.touched || clientForm.get('phone')?.hasError('backend'))">
+            <div class="error-message" *ngIf="isFormSubmitted && clientForm.get('phone')?.hasError('required')">Requerido</div>
+            <div class="error-message" *ngIf="clientForm.get('phone')?.hasError('invalidPhone')">{{ clientForm.get('phone')?.getError('invalidPhone') }}</div>
+            <div class="error-message" *ngIf="clientForm.get('phone')?.hasError('backend')">{{ clientForm.get('phone')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Fecha Nacimiento</label>
+            <input type="date" formControlName="birthDate" class="form-control" [class.is-invalid]="clientForm.get('birthDate')?.invalid && (clientForm.get('birthDate')?.touched || clientForm.get('birthDate')?.hasError('backend'))">
+            <div class="error-message" *ngIf="clientForm.get('birthDate')?.hasError('backend')">{{ clientForm.get('birthDate')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Correo Electrónico (Opcional)</label>
+          <input type="email" formControlName="email" class="form-control" placeholder="juan.perez@email.com" [class.is-invalid]="clientForm.get('email')?.invalid && (isFormSubmitted || clientForm.get('email')?.touched || clientForm.get('email')?.hasError('backend'))">
+          <div class="error-message" *ngIf="isFormSubmitted && clientForm.get('email')?.hasError('email')">Formato de correo inválido</div>
+          <div class="error-message" *ngIf="clientForm.get('email')?.hasError('backend')">{{ clientForm.get('email')?.getError('backend') }}</div>
+        </div>
+
+        <!-- Dirección -->
+        <div class="form-group">
+          <label class="form-label">Dirección (Línea 1)</label>
+          <input type="text" formControlName="address" class="form-control" placeholder="Calle, Número, Apto" [class.is-invalid]="clientForm.get('address')?.invalid && (clientForm.get('address')?.touched || clientForm.get('address')?.hasError('backend'))">
+          <div class="error-message" *ngIf="clientForm.get('address')?.hasError('backend')">{{ clientForm.get('address')?.getError('backend') }}</div>
+        </div>
+
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Ciudad</label>
+            <input type="text" formControlName="city" class="form-control" placeholder="Union City" [class.is-invalid]="clientForm.get('city')?.invalid && (clientForm.get('city')?.touched || clientForm.get('city')?.hasError('backend'))">
+            <div class="error-message" *ngIf="clientForm.get('city')?.hasError('backend')">{{ clientForm.get('city')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Estado / Zip</label>
+            <div class="flex gap-2">
+              <input type="text" formControlName="state" class="form-control" placeholder="NJ" style="width: 60px;" [class.is-invalid]="clientForm.get('state')?.invalid && (clientForm.get('state')?.touched || clientForm.get('state')?.hasError('backend'))">
+              <input type="text" formControlName="zipCode" class="form-control" placeholder="07087" [class.is-invalid]="clientForm.get('zipCode')?.invalid && (clientForm.get('zipCode')?.touched || clientForm.get('zipCode')?.hasError('backend'))">
+            </div>
+            <div class="error-message" *ngIf="clientForm.get('state')?.hasError('backend')">{{ clientForm.get('state')?.getError('backend') }}</div>
+            <div class="error-message" *ngIf="clientForm.get('zipCode')?.hasError('backend')">{{ clientForm.get('zipCode')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <!-- Sección 2: Configuración CRM -->
+        <h3 style="font-size: 13px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin-top: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">2. Configuración CRM</h3>
+
+        <div class="flex gap-3">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Estado CRM</label>
+            <select formControlName="status" class="form-select" [class.is-invalid]="clientForm.get('status')?.invalid && (isFormSubmitted || clientForm.get('status')?.touched || clientForm.get('status')?.hasError('backend'))">
+              <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+            <div class="error-message" *ngIf="clientForm.get('status')?.hasError('backend')">{{ clientForm.get('status')?.getError('backend') }}</div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Fuente Origen</label>
+            <select formControlName="source" class="form-select" [class.is-invalid]="clientForm.get('source')?.invalid && (isFormSubmitted || clientForm.get('source')?.touched || clientForm.get('source')?.hasError('backend'))">
+              <option *ngFor="let opt of sourceOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+            <div class="error-message" *ngIf="clientForm.get('source')?.hasError('backend')">{{ clientForm.get('source')?.getError('backend') }}</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Prioridad</label>
+          <select formControlName="priority" class="form-select" [class.is-invalid]="clientForm.get('priority')?.invalid && (isFormSubmitted || clientForm.get('priority')?.touched || clientForm.get('priority')?.hasError('backend'))">
+            <option *ngFor="let opt of priorityOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+          <div class="error-message" *ngIf="clientForm.get('priority')?.hasError('backend')">{{ clientForm.get('priority')?.getError('backend') }}</div>
+        </div>
+
+        <!-- Servicios Asignados (Multi-select) -->
+        <div class="form-group">
+          <label class="form-label">Asignar Servicios</label>
+          <div class="services-checkbox-grid">
+            <label class="service-checkbox-item" *ngFor="let srv of servicesList">
+              <input type="checkbox" [checked]="isServiceSelected(srv.id || '')" (change)="onServiceCheckboxChange(srv.id || '', $event)">
+              <div class="service-checkbox-desc">
+                <span class="service-checkbox-name">{{ srv.name }}</span>
+                <span class="service-checkbox-category">{{ srv.category }}</span>
+              </div>
+            </label>
+          </div>
+          <div class="error-message" *ngIf="clientForm.get('assignedServices')?.hasError('backend')">{{ clientForm.get('assignedServices')?.getError('backend') }}</div>
+        </div>
+
+        <!-- Notas internas -->
+        <div class="form-group">
+          <label class="form-label">Notas Internas</label>
+          <textarea formControlName="notes" rows="4" placeholder="Observaciones adicionales, historial de contacto..." [class.is-invalid]="clientForm.get('notes')?.invalid && (clientForm.get('notes')?.touched || clientForm.get('notes')?.hasError('backend'))"></textarea>
+          <div class="error-message" *ngIf="clientForm.get('notes')?.hasError('backend')">{{ clientForm.get('notes')?.getError('backend') }}</div>
+        </div>
+      </form>
+    </div>
+
+    <div class="drawer-footer">
+      <button class="btn btn-secondary" (click)="closeFormDrawer()" [disabled]="isSaving">Cancelar</button>
+      <button class="btn btn-primary" (click)="onSubmitClient()" [disabled]="isSaving">
+        <span *ngIf="isSaving" class="spinner-inline"></span>
+        {{ isSaving ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Registrar Cliente') }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Drawer: Ficha y Detalle de Cliente -->
+<div class="drawer-overlay" *ngIf="showDetailDrawer" (click)="closeDetailDrawer()">
+  <div class="drawer animate-fade-in" style="max-width: 600px;" (click)="$event.stopPropagation()">
+    <div class="drawer-header" *ngIf="selectedClient">
+      <div class="drawer-header-left">
+        <h2 class="drawer-title" style="font-size: 22px;">{{ selectedClient.firstName }} {{ selectedClient.lastName }}</h2>
+        <div class="flex gap-2 align-center" style="margin-top: 4px;">
+          <span class="badge" [ngClass]="'badge-' + (selectedClient.status || '')">{{ getStatusLabel(selectedClient.status) }}</span>
+          <span class="badge" [ngClass]="'badge-' + selectedClient.priority">Prioridad {{ selectedClient.priority }}</span>
+        </div>
+      </div>
+      <button class="action-icon-btn" (click)="closeDetailDrawer()" title="Cerrar">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Tabs Header -->
+    <div class="detail-tabs" *ngIf="selectedClient">
+      <button class="detail-tab-btn" [class.active]="activeDetailTab === 'general'" (click)="activeDetailTab = 'general'">General</button>
+      <button class="detail-tab-btn" [class.active]="activeDetailTab === 'services'" (click)="activeDetailTab = 'services'">Servicios ({{ selectedClient.assignedServices?.length || 0 }})</button>
+      <button class="detail-tab-btn" [class.active]="activeDetailTab === 'notes'" (click)="activeDetailTab = 'notes'">Notas</button>
+      <button class="detail-tab-btn" [class.active]="activeDetailTab === 'activity'" (click)="activeDetailTab = 'activity'">Actividad</button>
+    </div>
+
+    <div class="drawer-body" *ngIf="selectedClient">
+      <!-- TAB 1: General Info -->
+      <div *ngIf="activeDetailTab === 'general'">
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Nombre Completo</span>
+            <span class="info-value" style="font-weight: 600; color: var(--color-primary);">{{ selectedClient.firstName }} {{ selectedClient.lastName }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Teléfono</span>
+            <span class="info-value">
+              <a [href]="'tel:' + selectedClient.phone" style="color: var(--color-accent); text-decoration: none; font-weight: 500;">{{ selectedClient.phone }}</a>
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Correo Electrónico</span>
+            <span class="info-value">{{ selectedClient.email || 'No especificado' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Fecha Nacimiento</span>
+            <span class="info-value">{{ selectedClient.birthDate ? (selectedClient.birthDate | date:'longDate') : 'No especificada' }}</span>
+          </div>
+        </div>
+
+        <h3 style="font-size: 12px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin-bottom: 14px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Ubicación</h3>
+        <div class="info-grid">
+          <div class="info-item" style="grid-column: span 2;">
+            <span class="info-label">Dirección</span>
+            <span class="info-value">{{ selectedClient.address || 'No especificada' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Ciudad / Estado</span>
+            <span class="info-value">{{ selectedClient.city || '' }} {{ selectedClient.state ? ', ' + selectedClient.state : '' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Zip Code</span>
+            <span class="info-value">{{ selectedClient.zipCode || 'No especificado' }}</span>
+          </div>
+        </div>
+
+        <h3 style="font-size: 12px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; margin-top: 10px; margin-bottom: 14px; border-bottom: 1px solid var(--color-border); padding-bottom: 4px;">Información CRM</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Fuente Origen</span>
+            <span class="info-value">{{ getSourceLabel(selectedClient.source) }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Idioma de Preferencia</span>
+            <span class="info-value">{{ selectedClient.preferredLanguage || 'Español' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Fecha de Registro</span>
+            <span class="info-value">{{ selectedClient.createdAt | date:'medium' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Última Actualización</span>
+            <span class="info-value">{{ selectedClient.updatedAt | date:'medium' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Services Assigned -->
+      <div *ngIf="activeDetailTab === 'services'">
+        <div *ngIf="(selectedClient.assignedServices?.length || 0) === 0" style="text-align: center; padding: 20px; color: var(--color-text-muted);">
+          Este cliente no tiene servicios asignados actualmente.
+        </div>
+        <div class="assigned-service-card" *ngFor="let srvId of selectedClient.assignedServices || []">
+          <div>
+            <div class="assigned-service-name">{{ getServiceName(srvId) }}</div>
+            <div class="assigned-service-category">{{ getServiceCategory(srvId) }}</div>
+          </div>
+          <span class="badge badge-active">Activo</span>
+        </div>
+      </div>
+
+      <!-- TAB 3: Notes -->
+      <div *ngIf="activeDetailTab === 'notes'">
+        <div class="notes-container" *ngIf="selectedClient.notes">
+          {{ selectedClient.notes }}
+        </div>
+        <div *ngIf="!selectedClient.notes" style="text-align: center; padding: 20px; color: var(--color-text-muted);">
+          No hay notas registradas para este cliente.
+        </div>
+      </div>
+
+      <!-- TAB 4: Activity Log -->
+      <div *ngIf="activeDetailTab === 'activity'">
+        <!-- Simulated Activity Log list -->
+        <div class="history-list">
+          <div class="history-item">
+            <div class="history-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div class="history-details">
+              <span class="history-text">Creación del perfil en el sistema.</span>
+              <span class="history-time">F. Creación: {{ selectedClient.createdAt | date:'short' }}</span>
+            </div>
+          </div>
+          <div class="history-item" *ngIf="(selectedClient.assignedServices?.length || 0) > 0">
+            <div class="history-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068" />
+              </svg>
+            </div>
+            <div class="history-details">
+              <span class="history-text">Servicio asignado: <strong>{{ getServiceName(selectedClient.assignedServices?.[0]) }}</strong></span>
+              <span class="history-time">{{ selectedClient.createdAt | date:'short' }}</span>
+            </div>
+          </div>
+          <div class="history-item">
+            <div class="history-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+              </svg>
+            </div>
+            <div class="history-details">
+              <span class="history-text">Ficha actualizada por Administrador.</span>
+              <span class="history-time">F. Edición: {{ selectedClient.updatedAt | date:'short' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-footer">
+      <button class="btn btn-secondary" (click)="openEditDrawer(selectedClient!)">Editar Ficha</button>
+      <button class="btn btn-primary" (click)="closeDetailDrawer()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar Eliminar Cliente (Bootstrap) -->
+<div class="modal fade show d-block" tabindex="-1" role="dialog" *ngIf="showDeleteConfirm" style="background: rgba(0, 0, 0, 0.5);">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+      <div class="bg-danger" style="height: 6px;"></div>
+      <div class="modal-body text-center p-4">
+        <div class="mb-3">
+          <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3rem; display: inline-block;"></i>
+        </div>
+        <h4 class="modal-title font-display fw-bold mb-2 text-danger">Confirmar Eliminación</h4>
+        <p class="text-secondary mb-4" style="font-size: 15px; font-family: var(--font-sans);">
+          ¿Estás seguro de que deseas eliminar este cliente? Esta acción no se puede deshacer y borrará permanentemente su información del CRM.
+        </p>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-light w-50 py-2 font-sans fw-semibold" (click)="closeDeleteConfirm()" style="border-radius: 6px;">
+            Cancelar
+          </button>
+          <button type="button" class="btn btn-danger w-50 py-2 font-sans fw-semibold" (click)="deleteClient()" style="border-radius: 6px;">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap Feedback Modal -->
+<div class="modal fade show d-block" tabindex="-1" role="dialog" *ngIf="showFeedbackModal" style="background: rgba(0, 0, 0, 0.5); z-index: 1060;">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-0 shadow-lg animate-fade-in" style="border-radius: 12px; overflow: hidden;">
+      <div [ngClass]="feedbackType === 'success' ? 'bg-success' : 'bg-danger'" style="height: 6px;"></div>
+      <div class="modal-body text-center p-4">
+        <div class="mb-3">
+          <i [class]="'bi ' + feedbackIcon" [ngClass]="feedbackType === 'success' ? 'text-success' : 'text-danger'" style="font-size: 3rem; display: inline-block;"></i>
+        </div>
+        <h4 class="modal-title font-display fw-bold mb-2" [ngClass]="feedbackType === 'success' ? 'text-success' : 'text-danger'">
+          {{ feedbackTitle }}
+        </h4>
+        <p class="text-secondary mb-4" style="font-size: 15px; font-family: var(--font-sans);">
+          {{ feedbackMessage }}
+        </p>
+        <button type="button" class="btn w-100 py-2 font-sans fw-semibold" [ngClass]="feedbackType === 'success' ? 'btn-success' : 'btn-danger'" (click)="closeFeedbackModal()" style="border-radius: 6px;">
+          Aceptar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Barra de Acciones Flotante -->
+<div class="floating-action-bar animate-slide-up" *ngIf="selectedClients.length > 0">
+  <div class="floating-action-bar-content">
+    <div class="floating-selection-info">
+      <span class="selection-badge">{{ selectedClients.length }}</span>
+      <span class="selection-text">clientes seleccionados</span>
+    </div>
+    
+    <div class="floating-actions-buttons">
+      <button class="btn btn-action btn-email" (click)="openBulkEmailModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="btn-icon">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+        </svg>
+        Enviar Correo
+      </button>
+      
+      <button class="btn btn-action btn-sms" (click)="openBulkSMSModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="btn-icon">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+        </svg>
+        Enviar Mensaje
+      </button>
+      
+      <div class="divider-v"></div>
+      
+      <button class="btn-clear-selection" (click)="clearSelection()" title="Limpiar Selección">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 18px; height: 18px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Composición de Correo Masivo -->
+<div class="modal-overlay-custom" *ngIf="showBulkEmailModal" (click)="closeBulkEmailModal()">
+  <div class="modal-card-custom animate-scale-up" (click)="$event.stopPropagation()">
+    <div class="modal-header-custom">
+      <div class="modal-header-text">
+        <h3 class="modal-title-custom">Enviar Correo Electrónico</h3>
+        <p class="modal-subtitle-custom">Se enviará un correo personalizado a cada cliente seleccionado a través de nuestro servidor de correo.</p>
+      </div>
+      <button class="action-icon-btn" (click)="closeBulkEmailModal()" title="Cerrar">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body-custom">
+      <div class="modal-alert-custom modal-alert-info" *ngIf="getClientsWithEmail().length > 0">
+        El sistema enviará el correo a cada destinatario de manera segura e individual.
+      </div>
+      <div class="modal-alert-custom modal-alert-warning" *ngIf="selectedClients.length - getClientsWithEmail().length > 0">
+        <strong>Nota:</strong> {{ selectedClients.length - getClientsWithEmail().length }} cliente(s) seleccionado(s) no tienen un correo registrado y serán omitidos.
+      </div>
+
+      <div class="form-group">
+        <label class="form-label-custom">Asunto del Correo *</label>
+        <input type="text" [(ngModel)]="bulkEmailSubject" class="form-control" placeholder="Ej: Información Importante - Enterprises Capital">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label-custom">Cuerpo del Mensaje</label>
+        <textarea [(ngModel)]="bulkEmailBody" class="form-control" rows="6" placeholder="Escribe el contenido del correo aquí..." style="resize: vertical; min-height: 100px;"></textarea>
+      </div>
+
+      <!-- Adjuntar Imágenes -->
+      <div class="form-group" style="margin-top: 12px;">
+        <label class="form-label-custom">Adjuntar Imágenes</label>
+        <div class="attachment-upload-zone" style="border: 2px dashed var(--color-border); padding: 16px; border-radius: 8px; text-align: center; background-color: #f8fafc; cursor: pointer; position: relative;">
+          <input type="file" multiple accept="image/*" (change)="onEmailAttachmentsChange($event)" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+          <div style="color: var(--color-text-muted); font-size: 13px;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 24px; height: 24px; margin: 0 auto 8px; display: block; color: var(--color-primary);">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+            </svg>
+            <span>Haga clic para seleccionar o arrastrar imágenes aquí</span>
+          </div>
+        </div>
+
+        <!-- Lista de adjuntos cargados -->
+        <div class="attachments-list-row" *ngIf="bulkEmailAttachments.length > 0" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+          <div class="attachment-preview-tag" *ngFor="let att of bulkEmailAttachments; let idx = index" style="background-color: #f1f5f9; padding: 6px 12px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--color-border);">
+            <img [src]="'data:image/jpeg;base64,' + att.content" style="width: 24px; height: 24px; object-fit: cover; border-radius: 4px;" alt="preview">
+            <span style="font-weight: 500; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ att.name }}</span>
+            <button type="button" (click)="removeEmailAttachment(idx)" style="background: none; border: none; color: #ef4444; font-weight: 700; cursor: pointer; padding: 0 4px; font-size: 14px; line-height: 1;">&times;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista Previa de Correo Masivo -->
+      <div class="email-preview-wrapper" style="margin-top: 16px; border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; background-color: #f8fafc;">
+        <div style="background-color: #f1f5f9; padding: 8px 16px; font-size: 11px; font-weight: 700; color: #475569; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; letter-spacing: 0.5px;">
+          <span>VISTA PREVIA DEL CORREO (VISTA CLIENTE)</span>
+          <span style="font-size: 9px; background-color: #cbd5e1; padding: 2px 6px; border-radius: 4px; color: #334155; font-weight: 800;">Enterprises Capital LLC</span>
+        </div>
+        <div style="padding: 16px; max-height: 220px; overflow-y: auto;">
+          <div style="max-width: 100%; margin: 0 auto; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; background-color: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+            <!-- Mock Header -->
+            <div style="text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 16px;">
+              <h3 style="color: #0f172a; margin: 0; font-size: 15px; font-weight: 700;">Enterprises Capital LLC</h3>
+              <span style="color: #64748b; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Comunicación Oficial</span>
+            </div>
+            
+            <!-- Mock Content -->
+            <div style="min-height: 60px; font-size: 13px; line-height: 1.5; color: #334155; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+              <p style="margin-top: 0; margin-bottom: 12px;">Hola <strong>{{ getClientsWithEmail()[0]?.firstName || 'Cliente' }} {{ getClientsWithEmail()[0]?.lastName || '' }}</strong>,</p>
+              <div style="white-space: pre-wrap;">{{ bulkEmailBody || '[Escribe el cuerpo del mensaje para ver la previsualización...]' }}</div>
+            </div>
+
+            <!-- Mock Attachments in Preview -->
+            <div *ngIf="bulkEmailAttachments.length > 0" style="margin-top: 16px; border-top: 1px solid #f1f5f9; padding-top: 12px;">
+              <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Archivos Adjuntos ({{ bulkEmailAttachments.length }})</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                <div *ngFor="let att of bulkEmailAttachments" style="display: flex; align-items: center; gap: 6px; padding: 4px 8px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 11px; color: #475569;">
+                  <img [src]="'data:image/jpeg;base64,' + att.content" style="width: 18px; height: 18px; object-fit: cover; border-radius: 2px;" alt="preview">
+                  <span>{{ att.name }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Mock Footer -->
+            <div style="text-align: center; margin-top: 16px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #64748b;">
+              <p style="margin: 0 0 2px 0; font-weight: 600;">Enterprises Capital LLC</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recipients preview list -->
+      <div class="recipients-preview-container">
+        <h4 class="recipients-preview-title">Destinatarios con Correo ({{ getClientsWithEmail().length }})</h4>
+        <div class="recipients-list">
+          <div class="recipient-tag" *ngFor="let c of getClientsWithEmail()">
+            <span class="recipient-name">{{ c.firstName }} {{ c.lastName }}</span>
+            <span class="recipient-detail">&lt;{{ c.email }}&gt;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button class="btn btn-secondary" (click)="closeBulkEmailModal()">Cancelar</button>
+      <button class="btn btn-primary" [disabled]="!bulkEmailSubject || getClientsWithEmail().length === 0" (click)="sendBulkEmail()">
+        Enviar Correos
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Composición de Mensaje de Texto (SMS/WhatsApp) -->
+<div class="modal-overlay-custom" *ngIf="showBulkSMSModal" (click)="closeBulkSMSModal()">
+  <div class="modal-card-custom animate-scale-up" (click)="$event.stopPropagation()" style="max-width: 600px;">
+    <div class="modal-header-custom">
+      <div class="modal-header-text">
+        <h3 class="modal-title-custom">Enviar Mensajes de Texto</h3>
+        <p class="modal-subtitle-custom">Contacta a tus clientes seleccionados por SMS o WhatsApp.</p>
+      </div>
+      <button class="action-icon-btn" (click)="closeBulkSMSModal()" title="Cerrar">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body-custom">
+      <div class="modal-alert-custom modal-alert-warning" *ngIf="selectedClients.length - getClientsWithPhone().length > 0">
+        <strong>Nota:</strong> {{ selectedClients.length - getClientsWithPhone().length }} cliente(s) seleccionado(s) no tienen un teléfono registrado y serán omitidos.
+      </div>
+
+      <!-- Navigation Tabs inside the SMS/WA Modal -->
+      <div style="display: flex; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px; gap: 8px;">
+        <button type="button" 
+                (click)="activeSMSTab = 'automatic'" 
+                [style.border-bottom-color]="activeSMSTab === 'automatic' ? '#10b981' : 'transparent'"
+                [style.color]="activeSMSTab === 'automatic' ? '#10b981' : '#64748b'"
+                style="padding: 10px 16px; font-size: 13px; font-weight: 700; background: transparent; border: none; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.2s;">
+          WhatsApp CRM (Automático)
+        </button>
+        <button type="button" 
+                (click)="activeSMSTab = 'manual'" 
+                [style.border-bottom-color]="activeSMSTab === 'manual' ? 'var(--color-primary)' : 'transparent'"
+                [style.color]="activeSMSTab === 'manual' ? 'var(--color-primary)' : '#64748b'"
+                style="padding: 10px 16px; font-size: 13px; font-weight: 700; background: transparent; border: none; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.2s;">
+          Dispositivo Local (Manual)
+        </button>
+      </div>
+
+      <!-- Tab: WhatsApp CRM (Automático) -->
+      <div *ngIf="activeSMSTab === 'automatic'">
+        <!-- Connection Banner -->
+        <div style="padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; display: flex; align-items: center; justify-content: space-between;"
+             [style.background-color]="waStatus === 'connected' ? '#d1fae5' : '#fee2e2'"
+             [style.color]="waStatus === 'connected' ? '#065f46' : '#991b1b'"
+             [style.border]="waStatus === 'connected' ? '1px solid #a7f3d0' : '1px solid #fecaca'">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%;"
+                  [style.background-color]="waStatus === 'connected' ? '#10b981' : '#ef4444'"></span>
+            <span *ngIf="waStatus === 'connected'"><strong>WhatsApp Conectado:</strong> Envíos activos desde +{{ waConnectedPhone }}</span>
+            <span *ngIf="waStatus !== 'connected'"><strong>WhatsApp Desconectado:</strong> Conecta tu número real para envíos automáticos.</span>
+          </div>
+          <button type="button" 
+                  *ngIf="waStatus !== 'connected'"
+                  (click)="openWhatsAppLinkModal()"
+                  style="padding: 4px 8px; font-size: 11px; font-weight: 700; background-color: #ef4444; color: #ffffff; border: none; border-radius: 4px; cursor: pointer;">
+            Vincular Número
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label-custom">Mensaje del Envío Automático *</label>
+          <textarea [(ngModel)]="bulkSMSBody" class="form-control" rows="4" placeholder="Escribe el mensaje común que se enviará automáticamente..." style="resize: vertical; min-height: 80px;"></textarea>
+        </div>
+
+        <!-- Vista Previa de Mensaje Movil -->
+        <div class="sms-preview-wrapper" style="margin-top: 16px; margin-bottom: 16px; border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; background-color: #f1f5f9;">
+          <div style="background-color: #cbd5e1; padding: 8px 16px; font-size: 11px; font-weight: 700; color: #475569; border-bottom: 1px solid var(--color-border); letter-spacing: 0.5px;">
+            VISTA PREVIA DEL MENSAJE (DISPOSITIVO MÓVIL)
+          </div>
+          <div style="padding: 16px; display: flex; justify-content: center; background-color: #e2e8f0;">
+            <div style="width: 100%; max-width: 280px; background-color: #0f172a; border-radius: 20px; padding: 10px; border: 3px solid #334155; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+              <div style="text-align: center; color: #94a3b8; font-size: 9px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #1e293b; font-weight: 600;">
+                Envío Automático (Delay 1m)
+              </div>
+              <div style="background-color: #059669; color: #ffffff; padding: 8px 12px; border-radius: 12px 12px 0 12px; font-size: 11px; line-height: 1.4; max-width: 85%; margin-left: auto; word-break: break-word; white-space: pre-wrap;">Hola {{ getClientsWithPhone()[0]?.firstName || 'Cliente' }} {{ getClientsWithPhone()[0]?.lastName || '' }},
+{{ bulkSMSBody || '[Escribe el mensaje común para ver la previsualización...]' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipients list -->
+        <div class="recipients-preview-container" style="max-height: 180px; overflow-y: auto;">
+          <h4 class="recipients-preview-title">Destinatarios WhatsApp CRM ({{ getClientsWithPhone().length }})</h4>
+          <div class="recipients-phones-list">
+            <div class="recipient-phone-row" *ngFor="let c of getClientsWithPhone()" style="padding: 6px 12px;">
+              <span class="recipient-row-name">{{ c.firstName }} {{ c.lastName }}</span>
+              <span class="recipient-row-phone" style="color: #64748b; font-size: 12px;">{{ c.phone }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Dispositivo Local (Manual) -->
+      <div *ngIf="activeSMSTab === 'manual'">
+        <div class="form-group">
+          <label class="form-label-custom">Mensaje Común *</label>
+          <textarea [(ngModel)]="bulkSMSBody" class="form-control" rows="4" placeholder="Escribe el mensaje común que se pre-cargará en WhatsApp/SMS..." style="resize: vertical; min-height: 80px;"></textarea>
+        </div>
+
+        <!-- Vista Previa de Mensaje Movil -->
+        <div class="sms-preview-wrapper" style="margin-top: 16px; margin-bottom: 16px; border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; background-color: #f1f5f9;">
+          <div style="background-color: #cbd5e1; padding: 8px 16px; font-size: 11px; font-weight: 700; color: #475569; border-bottom: 1px solid var(--color-border); letter-spacing: 0.5px;">
+            VISTA PREVIA DEL MENSAJE (DISPOSITIVO MÓVIL)
+          </div>
+          <div style="padding: 16px; display: flex; justify-content: center; background-color: #e2e8f0;">
+            <div style="width: 100%; max-width: 280px; background-color: #0f172a; border-radius: 20px; padding: 10px; border: 3px solid #334155; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+              <div style="text-align: center; color: #94a3b8; font-size: 9px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #1e293b; font-weight: 600;">
+                Vista Previa SMS / WhatsApp
+              </div>
+              <div style="background-color: #059669; color: #ffffff; padding: 8px 12px; border-radius: 12px 12px 0 12px; font-size: 11px; line-height: 1.4; max-width: 85%; margin-left: auto; word-break: break-word; white-space: pre-wrap;">Hola {{ getClientsWithPhone()[0]?.firstName || 'Cliente' }} {{ getClientsWithPhone()[0]?.lastName || '' }},
+{{ bulkSMSBody || '[Escribe el mensaje común para ver la previsualización...]' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions Bar inside modal -->
+        <div class="modal-actions-shortcuts">
+          <button type="button" class="btn btn-outline" (click)="copyPhonesToClipboard()" [class.btn-success]="isPhonesCopied">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px; margin-right: 6px; display: inline-block; vertical-align: text-bottom;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.03 0 1.9.693 2.166 1.638m-7.377 12.408l1.5-1.5m0 0l3-3m-3 3l3 3M6.75 12H4.5a2.25 2.25 0 00-2.25 2.25V19.5a2.25 2.25 0 002.25 2.25h7.5a2.25 2.25 0 002.25-2.25V18" />
+            </svg>
+            {{ isPhonesCopied ? '¡Copiado!' : 'Copiar números' }}
+          </button>
+
+          <button type="button" class="btn btn-outline" (click)="sendGroupSMS()" [disabled]="getClientsWithPhone().length === 0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px; margin-right: 6px; display: inline-block; vertical-align: text-bottom;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+            </svg>
+            Enviar SMS Grupal
+          </button>
+        </div>
+
+        <!-- Recipients listing with direct link buttons -->
+        <div class="recipients-preview-container" style="max-height: 220px; overflow-y: auto;">
+          <h4 class="recipients-preview-title">Destinatarios y Enlaces Directos ({{ getClientsWithPhone().length }})</h4>
+          <div class="recipients-phones-list">
+            <div class="recipient-phone-row" *ngFor="let c of getClientsWithPhone()">
+              <div class="recipient-phone-info">
+                <span class="recipient-row-name">{{ c.firstName }} {{ c.lastName }}</span>
+                <span class="recipient-row-phone">{{ c.phone }}</span>
+              </div>
+              <div class="recipient-row-actions">
+                <a [href]="getIndividualWhatsAppLink(c)" target="_blank" class="btn-inline-action btn-inline-wa" title="Enviar WhatsApp individual">
+                  WhatsApp
+                </a>
+                <button type="button" (click)="sendIndividualSMS(c)" class="btn-inline-action btn-inline-sms" title="Enviar SMS individual" style="border: 1px solid rgba(37, 99, 235, 0.2); cursor: pointer;">
+                  SMS
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="btn btn-secondary" (click)="closeBulkSMSModal()">Cancelar</button>
+      <button type="button" 
+              *ngIf="activeSMSTab === 'automatic'" 
+              class="btn btn-primary" 
+              style="background-color: #10b981; border-color: #10b981;"
+              [disabled]="waStatus !== 'connected' || !bulkSMSBody || getClientsWithPhone().length === 0" 
+              (click)="sendBulkWhatsAppCRM()">
+        Enviar WhatsApp (CRM)
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Vincular WhatsApp (Escaneo QR) -->
+<div class="modal-overlay-custom" *ngIf="showWhatsAppLinkModal" (click)="closeWhatsAppLinkModal()">
+  <div class="modal-card-custom animate-scale-up" (click)="$event.stopPropagation()" style="max-width: 450px; text-align: center;">
+    <div class="modal-header-custom" style="justify-content: center; position: relative;">
+      <h3 class="modal-title-custom">Vincular Número de WhatsApp</h3>
+      <button type="button" class="action-icon-btn" (click)="closeWhatsAppLinkModal()" title="Cerrar" style="position: absolute; right: 16px; top: 16px;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body-custom" style="padding: 24px;">
+      <p style="font-size: 13px; color: #475569; margin-bottom: 20px; line-height: 1.5;">
+        Escanea este código QR con tu aplicación móvil de WhatsApp para conectar tu número real con el CRM y activar los envíos automáticos.
+      </p>
+
+      <!-- QR Display / Loader -->
+      <div style="width: 220px; height: 220px; margin: 0 auto 20px; border: 1px solid #cbd5e1; border-radius: 12px; background-color: #f8fafc; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: 10px;">
+        <div *ngIf="isLoadingQR" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <div style="width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+          <span style="font-size: 11px; color: #64748b; font-weight: 600;">Generando QR...</span>
+        </div>
+        
+        <img *ngIf="!isLoadingQR && waQRData" [src]="waQRData" alt="WhatsApp QR Code" style="width: 100%; height: 100%; object-fit: contain;">
+        
+        <div *ngIf="!isLoadingQR && !waQRData" style="font-size: 12px; color: #ef4444; padding: 12px; font-weight: 600;">
+          No se pudo cargar el código QR. Inténtalo de nuevo.
+        </div>
+      </div>
+
+      <!-- Instructions -->
+      <div style="text-align: left; font-size: 12px; color: #475569; background-color: #f1f5f9; padding: 12px 16px; border-radius: 8px; border-left: 4px solid #10b981;">
+        <ol style="margin: 0; padding-left: 16px; line-height: 1.6; font-weight: 500;">
+          <li>Abre WhatsApp en tu teléfono celular.</li>
+          <li>Ve a <strong>Menú / Ajustes</strong> (tres puntos en Android, o pestaña Configuración en iOS).</li>
+          <li>Selecciona <strong>Dispositivos vinculados</strong> y presiona <strong>Vincular un dispositivo</strong>.</li>
+          <li>Apunta la cámara de tu celular a este código QR para completar la conexión.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="modal-footer-custom" style="justify-content: center;">
+      <button type="button" class="btn btn-secondary" (click)="closeWhatsAppLinkModal()">Cerrar</button>
+      <button type="button" class="btn btn-outline" (click)="fetchWhatsAppQR()" [disabled]="isLoadingQR" style="border-color: #10b981; color: #10b981; font-weight: 700;">
+        Recargar QR
+      </button>
+    </div>
+  </div>
+</div>
+

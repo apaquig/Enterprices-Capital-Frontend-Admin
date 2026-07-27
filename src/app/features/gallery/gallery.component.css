@@ -1,0 +1,34 @@
+/* Custom additions over Bootstrap classes */
+.drop-zone-bootstrap:hover, .drop-zone-bootstrap.dragover {
+  background-color: rgba(11, 34, 64, 0.04) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary);
+}
+
+.drop-zone-bootstrap:hover svg {
+  color: var(--color-primary) !important;
+}
+
+.gallery-item-hover-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gallery-item-hover-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(11, 34, 64, 0.08) !important;
+}
+
+.gallery-item-hover-card:hover .item-img {
+  transform: scale(1.04);
+}
+
+.item-delete-overlay {
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all 0.2s ease;
+}
+
+.gallery-item-hover-card:hover .item-delete-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}

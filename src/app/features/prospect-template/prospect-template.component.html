@@ -1,0 +1,343 @@
+<div class="animate-fade-in" *ngIf="!isLoading">
+  <!-- Section Title -->
+  <div class="flex align-center justify-between" style="margin-bottom: 24px;">
+    <div>
+      <h1 style="font-size: 26px; font-weight: 700; margin-bottom: 4px;">Plantilla de Prospectos</h1>
+      <p style="color: var(--color-text-muted);">Califica y evalúa tus prospectos en base a variables predefinidas.</p>
+    </div>
+  </div>
+
+  <!-- Existing Client Picker Selector -->
+  <div class="card client-picker-card">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-grow: 1; min-width: 280px; position: relative;">
+        <label style="font-weight: 600; font-size: 14px; color: var(--color-text-main); white-space: nowrap;">
+          Calificar cliente existente:
+        </label>
+        <div style="position: relative; flex-grow: 1; z-index: 15;">
+          <input 
+            type="text" 
+            [(ngModel)]="clientSearchText" 
+            (focus)="showDropdown = true; filterDropdown()" 
+            (input)="filterDropdown()" 
+            placeholder="Buscar por nombre o celular..." 
+            class="form-control-custom"
+            style="width: 100%; box-sizing: border-box;"
+          >
+          <!-- Custom Dropdown Overlay -->
+          <div class="custom-autocomplete-dropdown" *ngIf="showDropdown">
+            <div 
+              *ngFor="let client of filteredDropdownClients" 
+              (click)="selectDropdownClient(client)" 
+              class="autocomplete-dropdown-item"
+            >
+              {{ client.firstName }} {{ client.lastName }} ({{ client.phone }})
+            </div>
+            <div class="autocomplete-dropdown-empty" *ngIf="filteredDropdownClients.length === 0">
+              No se encontraron clientes disponibles
+            </div>
+          </div>
+          <!-- Backdrop overlay to close when clicking outside -->
+          <div 
+            style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; cursor: default;" 
+            *ngIf="showDropdown" 
+            (click)="showDropdown = false"
+          ></div>
+        </div>
+      </div>
+      <button class="btn btn-navy" (click)="addExistingClientToEvaluation()" style="position: relative; z-index: 16;">
+        Agregar al Listado
+      </button>
+    </div>
+  </div>
+
+  <!-- Spreadsheet Card -->
+  <div class="spreadsheet-container-card card">
+    <div class="spreadsheet-header">
+      <div class="spreadsheet-title-banner" style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <h2>Plantilla de Prospectos</h2>
+        <div style="position: relative; min-width: 200px;">
+          <input 
+            type="text" 
+            [(ngModel)]="tableSearchText" 
+            (input)="onTableSearch()" 
+            placeholder="🔍 Buscar en la lista..." 
+            class="sheet-input-text" 
+            style="padding-left: 28px; width: 220px;"
+          >
+        </div>
+      </div>
+      <div class="spreadsheet-action-buttons">
+        <button class="btn btn-success flex align-center gap-5" (click)="addNewRow()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          + Agregar Nuevo Prospecto
+        </button>
+        <button class="btn btn-navy flex align-center gap-5" (click)="downloadExcel()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 14px; height: 14px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          Descargar Excel
+        </button>
+        <!-- Creator Filter (Admin only) -->
+        <select [(ngModel)]="filterCreator" (change)="onCreatorChange()" class="form-select filter-select" *ngIf="isAdmin" style="padding: 6px 12px; font-size: 13px; font-weight: 500; height: 36px; border: 1.5px solid var(--color-primary); border-radius: 6px; cursor: pointer; min-width: 180px; background-color: white; color: var(--color-text-dark); box-sizing: border-box;">
+          <option [value]="currentUser?._id || currentUser?.id || ''">Mis Prospectos</option>
+          <ng-container *ngFor="let agent of agentOptions">
+            <option *ngIf="agent.id !== (currentUser?._id || currentUser?.id)" [value]="agent.id">
+              {{ agent.name }}
+            </option>
+          </ng-container>
+        </select>
+      </div>
+    </div>
+
+    <!-- Responsive Sheet Table -->
+    <div class="spreadsheet-table-wrapper">
+      <table class="spreadsheet-grid-table">
+        <thead>
+          <tr>
+            <th class="col-name">Nombre Completo <span style="color: #dc2626; font-weight: bold;">*</span></th>
+            <th class="col-phone">Celular <span style="color: #dc2626; font-weight: bold;">*</span></th>
+            <th class="col-binary">Salud</th>
+            <th class="col-binary">Edad 25-50</th>
+            <th class="col-binary">EnPareja/Casado</th>
+            <th class="col-binary">Dueño de Casa</th>
+            <th class="col-binary">Hijos</th>
+            <th class="col-binary">Trabaja</th>
+            <th class="col-points">Puntos</th>
+            <th class="col-observation">Observacion</th>
+            <th class="col-state">Estado</th>
+            <th class="col-actions">Guardar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dynamic Row for New Client Inline Creation -->
+          <tr class="inline-new-row" *ngIf="showNewRow">
+            <td class="col-name">
+              <input 
+                type="text" 
+                [(ngModel)]="newRowData.firstName" 
+                (input)="validateFirstName()" 
+                placeholder="Nombre *" 
+                class="sheet-input-text font-bold"
+                [class.is-invalid-input]="newRowErrors.firstName"
+              >
+              <div *ngIf="newRowErrors.firstName" style="color: #dc2626; font-size: 10px; margin-top: 2px; font-weight: 500; text-align: left;">
+                {{ newRowErrors.firstName }}
+              </div>
+              
+              <input 
+                type="text" 
+                [(ngModel)]="newRowData.lastName" 
+                (input)="validateLastName()" 
+                placeholder="Apellido *" 
+                class="sheet-input-text font-bold" 
+                style="margin-top: 4px;"
+                [class.is-invalid-input]="newRowErrors.lastName"
+              >
+              <div *ngIf="newRowErrors.lastName" style="color: #dc2626; font-size: 10px; margin-top: 2px; font-weight: 500; text-align: left;">
+                {{ newRowErrors.lastName }}
+              </div>
+            </td>
+            <td class="col-phone">
+              <input 
+                type="text" 
+                [(ngModel)]="newRowData.phone" 
+                (input)="validatePhone()" 
+                placeholder="Celular *" 
+                class="sheet-input-text"
+                [class.is-invalid-input]="newRowErrors.phone"
+              >
+              <div *ngIf="newRowErrors.phone" style="color: #dc2626; font-size: 10px; margin-top: 2px; font-weight: 500; text-align: left; line-height: 1.2;">
+                {{ newRowErrors.phone }}
+              </div>
+              
+              <input 
+                type="text" 
+                [(ngModel)]="newRowData.email" 
+                (input)="validateEmail()" 
+                placeholder="Correo (Opcional)" 
+                class="sheet-input-text" 
+                style="margin-top: 4px; font-size: 11px;"
+                [class.is-invalid-input]="newRowErrors.email"
+              >
+              <div *ngIf="newRowErrors.email" style="color: #dc2626; font-size: 10px; margin-top: 2px; font-weight: 500; text-align: left;">
+                {{ newRowErrors.email }}
+              </div>
+            </td>
+            <td class="col-binary">
+              <select [(ngModel)]="newRowData.salud" (change)="recalculateNewRowPoints()" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-binary">
+              <select [(ngModel)]="newRowData.edad25_50" (change)="recalculateNewRowPoints()" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-binary">
+              <select [(ngModel)]="newRowData.enParejaCasado" (change)="recalculateNewRowPoints()" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-binary">
+              <select [(ngModel)]="newRowData.duenoCasa" (change)="recalculateNewRowPoints()" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-binary">
+              <select [(ngModel)]="newRowData.hijos" (change)="recalculateNewRowPoints()" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-binary">
+              <select [(ngModel)]="newRowData.trabaja" (change)="recalculateNewRowPoints()" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-points font-bold" 
+                [class.green-indicator]="newRowData.puntos !== null && newRowData.puntos >= 4" 
+                [class.red-indicator]="newRowData.puntos !== null && newRowData.puntos < 4">
+              {{ newRowData.puntos !== null && newRowData.puntos !== undefined ? newRowData.puntos : '-' }}
+            </td>
+            <td class="col-observation">
+              <textarea [(ngModel)]="newRowData.observacion" placeholder="Escribir observaciones..." class="sheet-textarea"></textarea>
+            </td>
+            <td class="col-state">
+              <select [(ngModel)]="newRowData.usState" class="sheet-select-state">
+                <option *ngFor="let st of usStates" [value]="st">{{ st }}</option>
+              </select>
+            </td>
+            <td class="col-actions">
+              <div style="display: flex; gap: 6px; justify-content: center;">
+                <button class="sheet-action-btn check-btn" (click)="saveNewProspect()" title="Guardar Prospecto">✓</button>
+                <button class="sheet-action-btn cancel-btn" (click)="cancelNewRow()" title="Cancelar">&times;</button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- List of Evaluated Clients -->
+          <tr *ngFor="let client of evaluatedClients" [class.inline-new-row]="client.isUnsaved">
+            <td class="col-name font-bold client-label-cell">
+              {{ client.firstName }} {{ client.lastName }}
+            </td>
+            <td class="col-phone client-label-cell">
+              {{ client.phone }}
+            </td>
+            <td class="col-binary" *ngIf="client.leadEvaluation">
+              <select [(ngModel)]="client.leadEvaluation.salud" (change)="recalculatePoints(client)" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-binary" *ngIf="client.leadEvaluation">
+              <select [(ngModel)]="client.leadEvaluation.edad25_50" (change)="recalculatePoints(client)" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-binary" *ngIf="client.leadEvaluation">
+              <select [(ngModel)]="client.leadEvaluation.enParejaCasado" (change)="recalculatePoints(client)" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-binary" *ngIf="client.leadEvaluation">
+              <select [(ngModel)]="client.leadEvaluation.duenoCasa" (change)="recalculatePoints(client)" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-binary" *ngIf="client.leadEvaluation">
+              <select [(ngModel)]="client.leadEvaluation.hijos" (change)="recalculatePoints(client)" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-binary" *ngIf="client.leadEvaluation">
+              <select [(ngModel)]="client.leadEvaluation.trabaja" (change)="recalculatePoints(client)" class="sheet-select-binary">
+                <option [ngValue]="null" disabled selected hidden></option>
+                <option [ngValue]="0">0</option>
+                <option [ngValue]="1">1</option>
+              </select>
+            </td>
+            <td class="col-points font-bold" *ngIf="client.leadEvaluation" 
+                [class.green-indicator]="client.leadEvaluation.puntos !== null && client.leadEvaluation.puntos >= 4" 
+                [class.red-indicator]="client.leadEvaluation.puntos !== null && client.leadEvaluation.puntos < 4">
+              {{ client.leadEvaluation.puntos !== null && client.leadEvaluation.puntos !== undefined ? client.leadEvaluation.puntos : '-' }}
+            </td>
+            <td class="col-observation" *ngIf="client.leadEvaluation">
+              <textarea [(ngModel)]="client.leadEvaluation.observacion" class="sheet-textarea" placeholder="Ninguna observación"></textarea>
+            </td>
+            <td class="col-state" *ngIf="client.leadEvaluation">
+              <select [(ngModel)]="client.leadEvaluation.usState" class="sheet-select-state">
+                <option *ngFor="let st of usStates" [value]="st">{{ st }}</option>
+              </select>
+            </td>
+            <td class="col-actions" *ngIf="client.leadEvaluation">
+              <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                <button class="sheet-save-row-btn" (click)="saveClientEvaluation(client)" title="Guardar cambios de esta fila" [disabled]="isSavingEvaluation">
+                  💾
+                </button>
+                <button class="sheet-action-btn check-btn" (click)="openWhatsApp(client.phone)" title="Enviar WhatsApp" style="background-color: #25d366; width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 448 512" style="width: 14px; height: 14px;">
+                    <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L3 512l148.4-38.9c32.8 17.9 69.6 27.3 107.1 27.3 122.4 0 222-99.6 222-222 0-59.3-23.2-115-65-156.9zM223.9 474c-33.2 0-65.7-8.9-94-25.7l-6.7-4-88 23.1 23.5-85.8-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Empty template view -->
+          <tr *ngIf="evaluatedClients.length === 0 && !showNewRow">
+            <td colspan="12" class="sheet-empty-tr">
+              No hay prospectos calificados en la lista. Agregue uno nuevo o seleccione un cliente de la base de datos en la parte superior.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Footer -->
+    <div class="spreadsheet-footer-pagination" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; background-color: #f8fafc; border-top: 1px solid #cbd5e1; border-radius: 0 0 8px 8px;">
+      <div style="font-size: 13px; color: #64748b;">
+        Mostrando <span style="color: #1e293b; font-weight: 600;">{{ evaluatedClients.length }}</span> de <span style="color: #1e293b; font-weight: 600;">{{ totalItems }}</span> prospectos calificados.
+      </div>
+      <div style="display: flex; gap: 6px; align-items: center;" *ngIf="totalItems > 0">
+        <button class="btn btn-navy" style="padding: 6px 12px; font-size: 13px;" (click)="prevPage()" [disabled]="currentPage === 1">
+          Anterior
+        </button>
+        <span style="font-size: 13px; color: #475569; margin: 0 8px;">
+          Página <strong>{{ currentPage }}</strong> de <strong>{{ totalPages }}</strong>
+        </span>
+        <button class="btn btn-navy" style="padding: 6px 12px; font-size: 13px;" (click)="nextPage()" [disabled]="currentPage === totalPages">
+          Siguiente
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GLOBAL LOADING STATE -->
+<div *ngIf="isLoading" class="loading-container" style="min-height: 400px;">
+  <span class="spinner-lg"></span>
+  <p style="margin-top: 16px; font-weight: 500;">Cargando listado de prospectos...</p>
+</div>

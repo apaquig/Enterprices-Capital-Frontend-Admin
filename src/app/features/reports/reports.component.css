@@ -1,0 +1,223 @@
+/* KPI Cards */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.kpi-card {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.kpi-val {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1.2;
+}
+
+.kpi-indicator {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.indicator-positive { color: var(--color-success); }
+.indicator-neutral { color: var(--color-text-muted); }
+
+/* Reports Grid Layout */
+.reports-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+/* Custom Report Card styling */
+.report-card {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.report-header {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.report-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.report-subtitle {
+  font-size: 12px;
+  color: var(--color-text-light);
+  margin-top: 2px;
+}
+
+/* Distribution layouts */
+.distribution-row {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.distribution-bar-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.distribution-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.distribution-track {
+  width: 100%;
+  height: 10px;
+  background-color: var(--color-bg-main);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.distribution-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width var(--transition-normal);
+}
+
+/* Custom visual Line chart simulation */
+.line-chart-sim {
+  height: 200px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--color-border);
+  position: relative;
+  padding-top: 20px;
+  gap: 8px;
+}
+
+.line-chart-point-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.line-chart-node {
+  width: 10px;
+  height: 10px;
+  background-color: var(--color-accent);
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--color-accent);
+  margin-bottom: -6px;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.line-chart-bar-indicator {
+  width: 2px;
+  background-color: rgba(0, 163, 255, 0.15);
+  margin-bottom: -2px;
+  transition: background-color var(--transition-fast);
+}
+
+.line-chart-point-container:hover .line-chart-bar-indicator {
+  background-color: rgba(0, 163, 255, 0.4);
+}
+
+.line-chart-tooltip {
+  position: absolute;
+  bottom: calc(100% + 14px);
+  background-color: var(--color-primary);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+  white-space: nowrap;
+}
+
+.line-chart-point-container:hover .line-chart-tooltip {
+  opacity: 1;
+}
+
+.line-chart-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 10px;
+}
+
+/* Grid layout for small stats */
+.stats-list-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.stats-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  background-color: #F8FAFC;
+}
+
+.stats-list-name {
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+.stats-list-val {
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+/* Responsive Rules */
+@media (max-width: 1024px) {
+  .kpi-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .reports-grid {
+    grid-template-columns: 1fr;
+  }
+}
