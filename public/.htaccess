@@ -1,12 +1,28 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  
-  # If the requested file or directory exists, serve it normally
-  RewriteCond %{REQUEST_FILENAME} -s [OR]
-  RewriteCond %{REQUEST_FILENAME} -l [OR]
+  RewriteBase /
+
+  # 1. Forzar HTTPS seguro
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # 2. Si el archivo o carpeta solicitado existe (imágenes, CSS, JS, etc.), servirlo directamente
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
-  RewriteRule ^.*$ - [NC,L]
-  
-  # Otherwise, redirect all other requests to index.html
-  RewriteRule ^(.*)$ index.html [NC,L]
+  RewriteRule ^ - [L]
+
+  # 3. Redirigir todas las demás rutas a index.html para que Angular maneje las URLs (/customers, /services, etc.)
+  RewriteRule ^ index.html [L]
 </IfModule>
+
+# 4. Tipos MIME correctos para evitar problemas de carga de scripts y estilos
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+  AddType image/svg+xml .svg
+  AddType font/woff2 .woff2
+</IfModule>
+
+# 5. Seguridad: Evitar listar directorios
+Options -Indexes
+
