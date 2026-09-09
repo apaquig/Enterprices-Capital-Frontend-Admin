@@ -182,4 +182,9 @@ export class AuthService {
   isAuthenticated(): boolean {
     return this.getAccessToken() !== null;
   }
+
+  isAdmin(): boolean {
+    const role = this.getUserRole();
+    return role ? role.toLowerCase() === 'admin' : false;
+  }
 }

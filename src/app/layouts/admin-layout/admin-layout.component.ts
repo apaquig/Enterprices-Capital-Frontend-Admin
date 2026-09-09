@@ -127,24 +127,28 @@ export class AdminLayoutComponent implements OnInit {
   }
 
   private updateBreadcrumbs(url: string): void {
-    if (url.includes('/dashboard')) {
+    if (url.includes('/dashboard') || url.includes('/inicio') || url.includes('/home') || url.includes('/admin')) {
       this.currentPathLabel = 'Dashboard';
-    } else if (url.includes('/customers') || url.includes('/clients')) {
+    } else if (url.includes('/customers') || url.includes('/clients') || url.includes('/clientes') || url.includes('/crm')) {
       this.currentPathLabel = 'Clientes / CRM';
-    } else if (url.includes('/prospects-sheet')) {
+    } else if (url.includes('/prospects-sheet') || url.includes('/prospects') || url.includes('/prospectos')) {
       this.currentPathLabel = 'Plantilla de Prospectos';
-    } else if (url.includes('/services')) {
+    } else if (url.includes('/services') || url.includes('/servicios')) {
       this.currentPathLabel = 'Servicios';
-    } else if (url.includes('/real-estate')) {
+    } else if (url.includes('/real-estate') || url.includes('/bienes-raices') || url.includes('/propiedades')) {
       this.currentPathLabel = 'Real Estate';
-    } else if (url.includes('/reports')) {
+    } else if (url.includes('/reports') || url.includes('/reportes')) {
       this.currentPathLabel = 'Reportes';
-    } else if (url.includes('/settings')) {
+    } else if (url.includes('/settings') || url.includes('/configuracion') || url.includes('/perfil')) {
       this.currentPathLabel = 'Configuración';
-    } else if (url.includes('/appointments')) {
+    } else if (url.includes('/appointments') || url.includes('/citas') || url.includes('/agenda')) {
       this.currentPathLabel = 'Citas / Agenda';
+    } else if (url.includes('/gallery') || url.includes('/galeria')) {
+      this.currentPathLabel = 'Galería';
+    } else if (url.includes('/404') || url.includes('/not-found')) {
+      this.currentPathLabel = 'Página No Encontrada (404)';
     } else {
-      this.currentPathLabel = 'Dashboard';
+      this.currentPathLabel = 'Página No Encontrada';
     }
   }
 }
