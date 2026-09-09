@@ -33,7 +33,8 @@ export const routes: Routes = [
     canActivateChild: [authGuard],
     children: [
       { path: 'dashboard', component: DashboardComponent, data: { roles: ['admin'] } },
-      { path: 'clients', component: ClientsComponent },
+      { path: 'customers', component: ClientsComponent },
+      { path: 'clients', redirectTo: 'customers', pathMatch: 'full' },
       { path: 'prospects-sheet', component: ProspectTemplateComponent },
       { path: 'services', component: ServicesComponent, data: { roles: ['admin'] } },
       { path: 'real-estate', component: RealEstateComponent, data: { roles: ['admin'] } },

@@ -12,7 +12,7 @@ export const authGuard: CanActivateFn = (route, state) => {
     if (expectedRoles && expectedRoles.length > 0) {
       const userRole = authService.getUserRole();
       if (!userRole || !expectedRoles.includes(userRole.toLowerCase())) {
-        const redirectPath = userRole && userRole.toLowerCase() === 'manager' ? '/clients' : '/dashboard';
+        const redirectPath = userRole && userRole.toLowerCase() === 'manager' ? '/customers' : '/dashboard';
         router.navigate([redirectPath]);
         return false;
       }

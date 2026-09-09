@@ -129,7 +129,7 @@ export class AdminLayoutComponent implements OnInit {
   private updateBreadcrumbs(url: string): void {
     if (url.includes('/dashboard')) {
       this.currentPathLabel = 'Dashboard';
-    } else if (url.includes('/clients')) {
+    } else if (url.includes('/customers') || url.includes('/clients')) {
       this.currentPathLabel = 'Clientes / CRM';
     } else if (url.includes('/prospects-sheet')) {
       this.currentPathLabel = 'Plantilla de Prospectos';

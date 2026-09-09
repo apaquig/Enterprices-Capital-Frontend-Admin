@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms';
 import { ClientService } from '../../core/services/client.service';
@@ -17,13 +17,25 @@ import { WhatsAppService } from '../../core/services/whatsapp.service';
   templateUrl: './clients.component.html',
   styleUrls: ['./clients.component.css']
 })
-export class ClientsComponent implements OnInit {
+export class ClientsComponent implements OnInit, OnDestroy {
   clients: Client[] = [];
   filteredClients: Client[] = [];
   servicesList: Service[] = [];
 
-  // Selections & Bulk communication
-  selectedClients: Client[] = [];
+  // Selections & Bulk communication (Ultra-fast Set & SelectAll Architecture)
+  selectAllMatching = false;
+  selectedClientIds = new Set<string>();
+  deselectedClientIds = new Set<string>();
+  selectedClientsMap = new Map<string, Client>();
+  
+  get selectedCount(): number {
+    if (this.selectAllMatching) {
+      const total = this.pagination.total > 0 ? this.pagination.total : this.filteredClients.length;
+      return Math.max(0, total - this.deselectedClientIds.size);
+    }
+    return this.selectedClientIds.size;
+  }
+
   showBulkEmailModal = false;
   showBulkSMSModal = false;
   bulkEmailSubject = '';
@@ -31,12 +43,38 @@ export class ClientsComponent implements OnInit {
   bulkEmailAttachments: { content: string; name: string }[] = [];
   bulkSMSBody = '';
   isPhonesCopied = false;
+  waAttachedImage: { base64: string; name: string; size: string; mimetype: string } | null = null;
   
+  // Message Personalization State
+  includeGreeting = true;
+  salutationType = 'Hola';
+  customSalutation = '';
+  nameFormat: 'fullName' | 'firstName' | 'lastName' | 'none' = 'fullName';
+
+  salutationOptions = [
+    { value: 'Hola', label: 'Hola' },
+    { value: 'Estimado/a', label: 'Estimado/a' },
+    { value: 'Buenos días', label: 'Buenos días' },
+    { value: 'Buenas tardes', label: 'Buenas tardes' },
+    { value: 'Saludos cordiales', label: 'Saludos cordiales' },
+    { value: 'custom', label: 'Personalizado...' },
+    { value: 'none', label: 'Sin saludo (Solo nombre)' }
+  ];
+
+  nameFormatOptions = [
+    { value: 'fullName', label: 'Nombre Completo (ej: Juan Pérez)' },
+    { value: 'firstName', label: 'Solo Primer Nombre (ej: Juan)' },
+    { value: 'lastName', label: 'Solo Apellido (ej: Pérez)' },
+    { value: 'none', label: 'Sin Nombre' }
+  ];
+
   // WhatsApp Integration State
   waStatus = 'disconnected'; // 'disconnected', 'connecting', 'qr_ready', 'connected'
   waConnectedPhone = '';
   waQRData = '';
   showWhatsAppLinkModal = false;
+  showDisconnectConfirmModal = false;
+  isDisconnectingWhatsApp = false;
   isLoadingQR = false;
   activeSMSTab = 'manual'; // 'manual' or 'automatic'
   
@@ -148,12 +186,30 @@ export class ClientsComponent implements OnInit {
     private cdr: ChangeDetectorRef
   ) {}
 
+  waGlobalStatusInterval: any = null;
+
   ngOnInit(): void {
     this.loadServices();
     this.loadClients();
     this.initForm();
     this.loadAgents();
     this.checkWhatsAppStatus();
+
+    // Keep WhatsApp connection status in real-time sync everywhere
+    this.waGlobalStatusInterval = setInterval(() => {
+      this.checkWhatsAppStatus();
+    }, 3500);
+  }
+
+  ngOnDestroy(): void {
+    if (this.waGlobalStatusInterval) {
+      clearInterval(this.waGlobalStatusInterval);
+      this.waGlobalStatusInterval = null;
+    }
+    if (this.waStatusInterval) {
+      clearInterval(this.waStatusInterval);
+      this.waStatusInterval = null;
+    }
   }
 
   loadAgents(): void {
@@ -281,6 +337,7 @@ export class ClientsComponent implements OnInit {
   private searchTimeout: any;
 
   applyFilters(): void {
+    this.clearSelection();
     // 1. Filter locally for instant response
     let temp = [...this.clients];
 
@@ -632,57 +689,131 @@ export class ClientsComponent implements OnInit {
     return pages;
   }
 
-  // Selection Helper Methods
+  // Helper to extract active filters for bulk queries
+  getActiveFilters(): any {
+    const filters: any = {
+      search: this.searchTerm,
+      clientStatus: this.filterStatus,
+      serviceId: this.filterService,
+      source: this.filterSource
+    };
+    if (this.isAdmin && this.filterCreator) {
+      filters.createdBy = this.filterCreator;
+    }
+    return filters;
+  }
+
+  // Selection Helper Methods (Instant 0ms Set Architecture)
   isClientSelected(client: Client): boolean {
     const clientId = client.id || client._id || '';
-    return this.selectedClients.some(c => (c.id || c._id || '') === clientId);
+    if (!clientId) return false;
+    if (this.selectAllMatching) {
+      return !this.deselectedClientIds.has(clientId);
+    }
+    return this.selectedClientIds.has(clientId);
   }
 
   toggleClientSelection(client: Client, event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     const clientId = client.id || client._id || '';
-    if (checked) {
-      if (!this.isClientSelected(client)) {
-        this.selectedClients.push(client);
+    if (!clientId) return;
+
+    if (this.selectAllMatching) {
+      if (!checked) {
+        this.deselectedClientIds.add(clientId);
+      } else {
+        this.deselectedClientIds.delete(clientId);
+      }
+      const total = this.pagination.total > 0 ? this.pagination.total : this.filteredClients.length;
+      if (this.deselectedClientIds.size >= total) {
+        this.clearSelection();
       }
     } else {
-      this.selectedClients = this.selectedClients.filter(c => (c.id || c._id || '') !== clientId);
+      if (checked) {
+        this.selectedClientIds.add(clientId);
+        this.selectedClientsMap.set(clientId, client);
+        const total = this.pagination.total > 0 ? this.pagination.total : this.filteredClients.length;
+        if (total > 0 && this.selectedClientIds.size >= total) {
+          this.selectAllMatching = true;
+          this.deselectedClientIds.clear();
+          this.selectedClientIds.clear();
+          this.selectedClientsMap.clear();
+        }
+      } else {
+        this.selectedClientIds.delete(clientId);
+        this.selectedClientsMap.delete(clientId);
+      }
     }
     this.cdr.detectChanges();
   }
 
   areAllSelected(): boolean {
-    if (this.filteredClients.length === 0) return false;
-    return this.filteredClients.every(c => this.isClientSelected(c));
+    const totalCount = this.pagination.total > 0 ? this.pagination.total : this.filteredClients.length;
+    if (totalCount === 0) return false;
+    if (this.selectAllMatching) {
+      return this.deselectedClientIds.size === 0;
+    }
+    return this.selectedClientIds.size >= totalCount;
+  }
+
+  isPartiallySelected(): boolean {
+    if (this.selectAllMatching) {
+      return this.deselectedClientIds.size > 0 && this.selectedCount > 0;
+    }
+    return this.selectedClientIds.size > 0 && !this.areAllSelected();
   }
 
   toggleSelectAll(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
-    if (checked) {
-      this.filteredClients.forEach(c => {
-        if (!this.isClientSelected(c)) {
-          this.selectedClients.push(c);
-        }
-      });
-    } else {
-      const filteredIds = this.filteredClients.map(c => c.id || c._id || '');
-      this.selectedClients = this.selectedClients.filter(c => !filteredIds.includes(c.id || c._id || ''));
+
+    if (!checked || this.areAllSelected()) {
+      this.clearSelection();
+      return;
     }
+
+    // Instant 0ms selection of all records across all pages
+    this.selectAllMatching = true;
+    this.deselectedClientIds.clear();
+    this.selectedClientIds.clear();
+    this.selectedClientsMap.clear();
     this.cdr.detectChanges();
   }
 
   clearSelection(): void {
-    this.selectedClients = [];
+    this.selectAllMatching = false;
+    this.deselectedClientIds.clear();
+    this.selectedClientIds.clear();
+    this.selectedClientsMap.clear();
     this.cdr.detectChanges();
   }
 
   // Communication Helper Methods
+  get selectedEmailCount(): number {
+    if (this.selectAllMatching) {
+      return this.selectedCount;
+    }
+    return this.getClientsWithEmail().length;
+  }
+
+  get selectedPhoneCount(): number {
+    if (this.selectAllMatching) {
+      return this.selectedCount;
+    }
+    return this.getClientsWithPhone().length;
+  }
+
   getClientsWithEmail(): Client[] {
-    return this.selectedClients.filter(c => !!c.email);
+    if (this.selectAllMatching) {
+      return this.filteredClients.filter(c => !this.deselectedClientIds.has(c.id || c._id || '') && !!c.email);
+    }
+    return Array.from(this.selectedClientsMap.values()).filter(c => !!c.email);
   }
 
   getClientsWithPhone(): Client[] {
-    return this.selectedClients.filter(c => !!c.phone);
+    if (this.selectAllMatching) {
+      return this.filteredClients.filter(c => !this.deselectedClientIds.has(c.id || c._id || '') && !!c.phone);
+    }
+    return Array.from(this.selectedClientsMap.values()).filter(c => !!c.phone);
   }
 
   openBulkEmailModal(): void {
@@ -724,15 +855,33 @@ export class ClientsComponent implements OnInit {
   }
 
   sendBulkEmail(): void {
-    const clientIds = this.selectedClients.map(c => c.id || c._id || '').filter(id => !!id);
-    const emails = this.getClientsWithEmail().map(c => c.email!.trim());
-    if (emails.length === 0) {
-      this.showFeedback('danger', 'Sin destinatarios', 'Ninguno de los clientes seleccionados tiene un correo electrónico registrado.');
+    if (this.selectedCount === 0) {
+      this.showFeedback('danger', 'Sin destinatarios', 'Debe seleccionar al menos un cliente.');
       return;
     }
-    
+
+    if (!this.bulkEmailSubject.trim()) {
+      this.showFeedback('danger', 'Asunto requerido', 'El asunto del correo es obligatorio.');
+      return;
+    }
+
     this.isLoading = true;
-    this.clientService.sendBulkEmails(clientIds, this.bulkEmailSubject, this.bulkEmailBody, this.bulkEmailAttachments).subscribe({
+
+    const payload: any = {
+      subject: this.bulkEmailSubject,
+      body: this.bulkEmailBody,
+      attachments: this.bulkEmailAttachments
+    };
+
+    if (this.selectAllMatching) {
+      payload.selectAll = true;
+      payload.filters = this.getActiveFilters();
+      payload.excludedIds = Array.from(this.deselectedClientIds);
+    } else {
+      payload.clientIds = Array.from(this.selectedClientIds);
+    }
+
+    this.clientService.sendBulkEmails(payload).subscribe({
       next: (res) => {
         this.isLoading = false;
         if (res.success) {
@@ -755,17 +904,194 @@ export class ClientsComponent implements OnInit {
 
   openBulkSMSModal(): void {
     this.bulkSMSBody = '';
+    this.waAttachedImage = null;
     this.isPhonesCopied = false;
+    this.checkWhatsAppStatus();
     this.showBulkSMSModal = true;
     this.cdr.detectChanges();
   }
 
   closeBulkSMSModal(): void {
     this.showBulkSMSModal = false;
+    this.waAttachedImage = null;
+    this.cdr.detectChanges();
+  }
+
+  isProcessingImage = false;
+
+  async onWhatsAppImageSelected(event: any): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await this.processImageFile(file);
+    event.target.value = '';
+  }
+
+  onImageDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  onImageDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      this.processImageFile(file);
+    }
+  }
+
+  async processImageFile(file: File): Promise<void> {
+    if (!file.type.startsWith('image/')) {
+      this.showFeedback('danger', 'Formato no soportado', 'Por favor seleccione un archivo de imagen válido (JPG, PNG, WebP).');
+      return;
+    }
+
+    // Direct instant load for standard image sizes (up to 2.5 MB)
+    if (file.size <= 2.5 * 1024 * 1024) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.waAttachedImage = {
+          base64: e.target.result,
+          name: file.name,
+          size: (file.size / 1024).toFixed(1) + ' KB',
+          mimetype: file.type || 'image/jpeg'
+        };
+        this.cdr.detectChanges();
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // Fast optimization only if image exceeds 2.5 MB
+    this.isProcessingImage = true;
+    this.cdr.detectChanges();
+
+    try {
+      const optimized = await this.quickOptimizeLargeImage(file);
+      this.waAttachedImage = optimized;
+      this.isProcessingImage = false;
+      this.cdr.detectChanges();
+    } catch (err) {
+      console.error('Error procesando imagen grande:', err);
+      // Fallback: direct read
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.waAttachedImage = {
+          base64: e.target.result,
+          name: file.name,
+          size: (file.size / 1024).toFixed(1) + ' KB',
+          mimetype: file.type || 'image/jpeg'
+        };
+        this.isProcessingImage = false;
+        this.cdr.detectChanges();
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  quickOptimizeLargeImage(file: File, maxDimension = 1920, quality = 0.90): Promise<{ base64: string; size: string; name: string; mimetype: string }> {
+    return new Promise((resolve, reject) => {
+      const blobUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onerror = (e) => {
+        URL.revokeObjectURL(blobUrl);
+        reject(e);
+      };
+      img.onload = () => {
+        URL.revokeObjectURL(blobUrl);
+        let width = img.width;
+        let height = img.height;
+
+        // Resize only if strictly larger than 1920px
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Context not available'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        const compressedBase64 = canvas.toDataURL(outputType, quality);
+
+        const stringLength = compressedBase64.length - 'data:image/jpeg;base64,'.length;
+        const sizeInBytes = 4 * Math.ceil(stringLength / 3) * 0.5624896334383612;
+        const sizeInKb = (sizeInBytes / 1024).toFixed(1);
+
+        resolve({
+          base64: compressedBase64,
+          name: file.name,
+          size: `${sizeInKb} KB (Listo para WhatsApp)`,
+          mimetype: outputType
+        });
+      };
+      img.src = blobUrl;
+    });
+  }
+
+  removeWhatsAppImage(): void {
+    this.waAttachedImage = null;
     this.cdr.detectChanges();
   }
 
   copyPhonesToClipboard(): void {
+    if (this.selectAllMatching) {
+      this.isLoading = true;
+      const filters = {
+        ...this.getActiveFilters(),
+        page: 1,
+        limit: this.pagination.total > 0 ? this.pagination.total : 10000
+      };
+      this.clientService.getClients(filters).subscribe({
+        next: (res) => {
+          this.isLoading = false;
+          const allPhones = (res.data || [])
+            .filter(c => !this.deselectedClientIds.has(c.id || c._id || '') && !!c.phone)
+            .map(c => c.phone.trim());
+          
+          if (allPhones.length === 0) {
+            this.showFeedback('danger', 'Sin teléfonos', 'Ninguno de los clientes seleccionados tiene un teléfono válido.');
+            this.cdr.detectChanges();
+            return;
+          }
+          const phonesString = allPhones.join(', ');
+          navigator.clipboard.writeText(phonesString).then(() => {
+            this.isPhonesCopied = true;
+            this.showFeedback('success', 'Teléfonos Copiados', `Se han copiado ${allPhones.length} números de teléfono al portapapeles.`);
+            this.cdr.detectChanges();
+            setTimeout(() => {
+              this.isPhonesCopied = false;
+              this.cdr.detectChanges();
+            }, 3000);
+          }).catch(err => {
+            console.error('Error al copiar:', err);
+            this.showFeedback('danger', 'Error al copiar', 'No se pudo copiar la lista de teléfonos automáticamente.');
+            this.cdr.detectChanges();
+          });
+        },
+        error: () => {
+          this.isLoading = false;
+          this.showFeedback('danger', 'Error', 'No se pudieron obtener los teléfonos.');
+          this.cdr.detectChanges();
+        }
+      });
+      return;
+    }
+
     const phones = this.getClientsWithPhone().map(c => c.phone.trim());
     if (phones.length === 0) {
       this.showFeedback('danger', 'Sin teléfonos', 'Ninguno de los clientes seleccionados tiene un teléfono válido.');
@@ -798,10 +1124,86 @@ export class ClientsComponent implements OnInit {
     this.launchSMSProtocol(smsUrl);
   }
 
+  getEffectiveSalutation(): string {
+    if (!this.includeGreeting) return '';
+    if (this.salutationType === 'custom') {
+      return this.customSalutation || '';
+    }
+    if (this.salutationType === 'none') {
+      return '';
+    }
+    return this.salutationType;
+  }
+
+  insertTag(tag: string): void {
+    const textarea = document.getElementById('bulkSMSBodyTextarea') as HTMLTextAreaElement;
+    if (textarea) {
+      const start = textarea.selectionStart || this.bulkSMSBody.length;
+      const end = textarea.selectionEnd || this.bulkSMSBody.length;
+      const text = this.bulkSMSBody;
+      this.bulkSMSBody = text.substring(0, start) + tag + text.substring(end);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + tag.length, start + tag.length);
+        this.cdr.detectChanges();
+      }, 0);
+    } else {
+      this.bulkSMSBody = (this.bulkSMSBody || '') + ' ' + tag;
+    }
+    this.cdr.detectChanges();
+  }
+
+  getFormattedPersonalizedMessage(client?: Client): string {
+    const targetClient = client || this.getClientsWithPhone()[0] || ({
+      firstName: 'Patricia',
+      lastName: 'Lojan',
+      phone: '+19738203353',
+      email: 'patricia@ejemplo.com'
+    } as any);
+
+    const firstName = (targetClient.firstName || '').trim();
+    const lastName = (targetClient.lastName || '').trim();
+    const fullName = `${firstName} ${lastName}`.trim() || 'Cliente';
+
+    let selectedName = fullName;
+    if (this.nameFormat === 'firstName') selectedName = firstName || 'Cliente';
+    else if (this.nameFormat === 'lastName') selectedName = lastName || 'Cliente';
+    else if (this.nameFormat === 'none') selectedName = '';
+
+    let template = this.bulkSMSBody || '';
+
+    // Replace dynamic variable placeholders
+    template = template
+      .replace(/\{\{\s*nombre\s*\}\}|\{\s*nombre\s*\}|\{\{\s*firstname\s*\}\}|\{\s*firstname\s*\}/gi, firstName || 'Cliente')
+      .replace(/\{\{\s*apellido\s*\}\}|\{\s*apellido\s*\}|\{\{\s*lastname\s*\}\}|\{\s*lastname\s*\}/gi, lastName || '')
+      .replace(/\{\{\s*nombre_completo\s*\}\}|\{\s*nombre_completo\s*\}|\{\{\s*fullname\s*\}\}|\{\s*fullname\s*\}/gi, fullName)
+      .replace(/\{\{\s*email\s*\}\}|\{\s*email\s*\}/gi, targetClient.email || '')
+      .replace(/\{\{\s*telefono\s*\}\}|\{\s*telefono\s*\}/gi, targetClient.phone || '');
+
+    let fullMessage = template;
+    if (this.includeGreeting) {
+      const prefix = this.getEffectiveSalutation().trim();
+      let greetingLine = '';
+      if (prefix && selectedName) {
+        greetingLine = `${prefix} ${selectedName},\n\n`;
+      } else if (prefix) {
+        greetingLine = `${prefix},\n\n`;
+      } else if (selectedName) {
+        greetingLine = `${selectedName},\n\n`;
+      }
+
+      if (greetingLine) {
+        fullMessage = `${greetingLine}${template}`;
+      }
+    }
+
+    return fullMessage;
+  }
+
   sendIndividualSMS(client: Client): void {
     const cleanNumber = client.phone.replace(/[^\d+]/g, '');
-    const greeting = `Hola ${client.firstName} ${client.lastName},\n`;
-    const smsUrl = `sms:${cleanNumber}?body=${encodeURIComponent(greeting + this.bulkSMSBody)}`;
+    const message = this.getFormattedPersonalizedMessage(client);
+    const smsUrl = `sms:${cleanNumber}?body=${encodeURIComponent(message)}`;
     this.launchSMSProtocol(smsUrl);
   }
 
@@ -817,8 +1219,8 @@ export class ClientsComponent implements OnInit {
 
   getIndividualWhatsAppLink(client: Client): string {
     const cleanNumber = client.phone.replace(/[^0-9]/g, '');
-    const greeting = `Hola ${client.firstName} ${client.lastName},\n`;
-    return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(greeting + this.bulkSMSBody)}`;
+    const message = this.getFormattedPersonalizedMessage(client);
+    return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
   }
 
   // WhatsApp Integration Methods
@@ -842,12 +1244,19 @@ export class ClientsComponent implements OnInit {
   openWhatsAppLinkModal(): void {
     this.showWhatsAppLinkModal = true;
     this.waQRData = '';
+    
+    if (this.waStatus === 'connected') {
+      this.isLoadingQR = false;
+      this.cdr.detectChanges();
+      return;
+    }
+
     this.isLoadingQR = true;
     this.cdr.detectChanges();
 
     this.fetchWhatsAppQR();
 
-    // Start polling status every 3 seconds to auto-close when connected
+    // Start polling status every 2.5 seconds to auto-update when connected
     if (this.waStatusInterval) {
       clearInterval(this.waStatusInterval);
     }
@@ -856,41 +1265,66 @@ export class ClientsComponent implements OnInit {
       this.whatsappService.getStatus().subscribe({
         next: (res) => {
           if (res.success && res.data) {
+            const prevStatus = this.waStatus;
             this.waStatus = res.data.status;
             this.waConnectedPhone = res.data.connectedPhone || '';
             if (this.waStatus === 'connected') {
-              this.showFeedback('success', '¡WhatsApp Vinculado!', 'Tu número real se ha conectado con éxito.');
-              this.closeWhatsAppLinkModal();
+              this.isLoadingQR = false;
+              this.waQRData = '';
+              if (prevStatus !== 'connected') {
+                this.showFeedback('success', '¡WhatsApp Vinculado!', `Tu número +${this.waConnectedPhone} se ha conectado con éxito.`);
+              }
             }
+            this.cdr.detectChanges();
           }
         },
         error: (err) => console.error('Error en sondeo de estado WhatsApp:', err)
       });
-    }, 3000);
+    }, 2500);
   }
 
-  fetchWhatsAppQR(): void {
+  fetchWhatsAppQR(retryCount = 0): void {
     this.isLoadingQR = true;
+    this.cdr.detectChanges();
+
     this.whatsappService.getQR().subscribe({
       next: (res) => {
-        this.isLoadingQR = false;
         if (res.success && res.data) {
-          this.waQRData = res.data.qr;
+          if (res.data.qr) {
+            this.waQRData = res.data.qr;
+            this.isLoadingQR = false;
+            this.cdr.detectChanges();
+            return;
+          }
           
           if (res.data.loading) {
-            setTimeout(() => {
-              if (this.showWhatsAppLinkModal && !this.waQRData) {
-                this.fetchWhatsAppQR();
-              }
-            }, 2000);
+            if (retryCount < 10 && this.showWhatsAppLinkModal) {
+              setTimeout(() => {
+                if (this.showWhatsAppLinkModal && !this.waQRData) {
+                  this.fetchWhatsAppQR(retryCount + 1);
+                }
+              }, 1500);
+              return;
+            }
           }
         }
+        
+        this.isLoadingQR = false;
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.isLoadingQR = false;
-        this.showFeedback('danger', 'Error al obtener QR', 'No se pudo generar el código de WhatsApp.');
-        this.cdr.detectChanges();
+        console.error('Error al obtener QR de WhatsApp:', err);
+        if (retryCount < 5 && this.showWhatsAppLinkModal) {
+          setTimeout(() => {
+            if (this.showWhatsAppLinkModal && !this.waQRData) {
+              this.fetchWhatsAppQR(retryCount + 1);
+            }
+          }, 2000);
+        } else {
+          this.isLoadingQR = false;
+          this.showFeedback('danger', 'Error al obtener QR', 'No se pudo generar el código QR de WhatsApp.');
+          this.cdr.detectChanges();
+        }
       }
     });
   }
@@ -898,6 +1332,7 @@ export class ClientsComponent implements OnInit {
   closeWhatsAppLinkModal(): void {
     this.showWhatsAppLinkModal = false;
     this.waQRData = '';
+    this.isLoadingQR = false;
     if (this.waStatusInterval) {
       clearInterval(this.waStatusInterval);
       this.waStatusInterval = null;
@@ -905,49 +1340,100 @@ export class ClientsComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  logoutWhatsApp(): void {
-    if (confirm('¿Está seguro de que desea desvincular su número de WhatsApp? El CRM ya no podrá realizar envíos automáticos.')) {
-      this.isLoading = true;
-      this.whatsappService.logout().subscribe({
-        next: (res) => {
-          this.isLoading = false;
-          if (res.success) {
-            this.waStatus = 'disconnected';
-            this.waConnectedPhone = '';
-            this.showFeedback('success', 'Desvinculado con éxito', 'Tu número de WhatsApp se ha desconectado del servidor.');
-          } else {
-            this.showFeedback('danger', 'Error al desvincular', res.message || 'No se pudo desvincular.');
-          }
-          this.cdr.detectChanges();
-        },
-        error: (err) => {
-          this.isLoading = false;
-          this.showFeedback('danger', 'Error', 'Ocurrió un error al intentar desvincular.');
-          this.cdr.detectChanges();
-        }
-      });
+  openDisconnectConfirmModal(): void {
+    this.showDisconnectConfirmModal = true;
+    this.cdr.detectChanges();
+  }
+
+  closeDisconnectConfirmModal(): void {
+    if (!this.isDisconnectingWhatsApp) {
+      this.showDisconnectConfirmModal = false;
+      this.cdr.detectChanges();
     }
   }
 
+  confirmLogoutWhatsApp(): void {
+    this.isDisconnectingWhatsApp = true;
+    this.cdr.detectChanges();
+
+    this.whatsappService.logout().subscribe({
+      next: (res) => {
+        this.isDisconnectingWhatsApp = false;
+        this.showDisconnectConfirmModal = false;
+        this.waStatus = 'disconnected';
+        this.waConnectedPhone = '';
+        this.waQRData = '';
+        this.showWhatsAppLinkModal = false;
+        if (this.waStatusInterval) {
+          clearInterval(this.waStatusInterval);
+          this.waStatusInterval = null;
+        }
+        this.showFeedback('success', 'WhatsApp Desvinculado', 'Tu número de WhatsApp se ha desconectado correctamente del CRM.');
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error al desvincular WhatsApp:', err);
+        this.isDisconnectingWhatsApp = false;
+        this.showDisconnectConfirmModal = false;
+        this.waStatus = 'disconnected';
+        this.waConnectedPhone = '';
+        this.waQRData = '';
+        this.showWhatsAppLinkModal = false;
+        if (this.waStatusInterval) {
+          clearInterval(this.waStatusInterval);
+          this.waStatusInterval = null;
+        }
+        this.showFeedback('success', 'WhatsApp Desvinculado', 'La sesión de WhatsApp ha sido cerrada.');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  logoutWhatsApp(): void {
+    this.openDisconnectConfirmModal();
+  }
+
   sendBulkWhatsAppCRM(): void {
-    const clientIds = this.selectedClients.map(c => c.id || c._id || '').filter(id => !!id);
-    const phones = this.getClientsWithPhone().map(c => c.phone.trim());
-    if (phones.length === 0) {
-      this.showFeedback('danger', 'Sin teléfonos', 'Ninguno de los clientes seleccionados tiene un teléfono válido.');
+    if (this.selectedCount === 0) {
+      this.showFeedback('danger', 'Sin teléfonos', 'Debe seleccionar al menos un cliente.');
       return;
     }
 
-    if (!this.bulkSMSBody.trim()) {
-      this.showFeedback('danger', 'Mensaje vacío', 'El cuerpo del mensaje es obligatorio para envíos automáticos.');
+    if (!this.bulkSMSBody.trim() && !this.waAttachedImage) {
+      this.showFeedback('danger', 'Mensaje vacío', 'Debe escribir un mensaje o adjuntar una imagen para envíos automáticos.');
       return;
     }
 
     this.isLoading = true;
-    this.whatsappService.sendBulkWhatsApp(clientIds, this.bulkSMSBody).subscribe({
+
+    const payload: any = {
+      body: this.bulkSMSBody,
+      salutationPrefix: this.getEffectiveSalutation(),
+      includeGreeting: this.includeGreeting,
+      nameFormat: this.nameFormat
+    };
+
+    if (this.waAttachedImage) {
+      payload.media = {
+        base64: this.waAttachedImage.base64,
+        name: this.waAttachedImage.name,
+        mimetype: this.waAttachedImage.mimetype
+      };
+    }
+
+    if (this.selectAllMatching) {
+      payload.selectAll = true;
+      payload.filters = this.getActiveFilters();
+      payload.excludedIds = Array.from(this.deselectedClientIds);
+    } else {
+      payload.clientIds = Array.from(this.selectedClientIds);
+    }
+
+    this.whatsappService.sendBulkWhatsApp(payload).subscribe({
       next: (res) => {
         this.isLoading = false;
         if (res.success) {
-          this.showFeedback('success', 'Procesando Envíos', res.message || 'El envío de mensajes de WhatsApp ha comenzado en segundo plano con un intervalo de 1 minuto entre cada cliente.');
+          this.showFeedback('success', 'Procesando Envíos', res.message || 'El envío de mensajes de WhatsApp ha comenzado en segundo plano con un intervalo de 10 segundos entre cada cliente.');
           this.clearSelection();
           this.closeBulkSMSModal();
         } else {

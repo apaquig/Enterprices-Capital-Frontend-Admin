@@ -22,7 +22,22 @@ export class WhatsAppService {
     return this.http.post<ApiResponse<any>>(`${environment.apiUrl}/whatsapp/logout`, {});
   }
 
-  sendBulkWhatsApp(clientIds: string[], body: string): Observable<ApiResponse<any>> {
-    return this.http.post<ApiResponse<any>>(`${environment.apiUrl}/clients/send-whatsapp`, { clientIds, body });
+  sendBulkWhatsApp(payload: {
+    clientIds?: string[];
+    selectAll?: boolean;
+    filters?: any;
+    excludedIds?: string[];
+    body?: string;
+    salutationPrefix?: string;
+    includeGreeting?: boolean;
+    nameFormat?: string;
+    media?: {
+      base64?: string;
+      url?: string;
+      mimetype?: string;
+      name?: string;
+    };
+  }): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${environment.apiUrl}/clients/send-whatsapp`, payload);
   }
 }

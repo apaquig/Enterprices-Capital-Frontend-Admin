@@ -14,7 +14,7 @@
         <span *ngIf="waStatus === 'connected'">WhatsApp Vinculado (+{{ waConnectedPhone }})</span>
         <span *ngIf="waStatus !== 'connected'">WhatsApp Desconectado</span>
         
-        <button type="button" *ngIf="waStatus === 'connected'" (click)="logoutWhatsApp()" class="btn-inline-action" style="padding: 2px 6px; font-size: 10px; background-color: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; border-radius: 4px; cursor: pointer; font-weight: 700;">Desconectar</button>
+        <button type="button" *ngIf="waStatus === 'connected'" (click)="openDisconnectConfirmModal()" class="btn-inline-action" style="padding: 2px 6px; font-size: 10px; background-color: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; border-radius: 4px; cursor: pointer; font-weight: 700;">Desconectar</button>
         <button type="button" *ngIf="waStatus !== 'connected'" (click)="openWhatsAppLinkModal()" class="btn-inline-action" style="padding: 2px 6px; font-size: 10px; background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; border-radius: 4px; cursor: pointer; font-weight: 700;">Vincular</button>
       </div>
 
@@ -67,7 +67,13 @@
       <thead>
         <tr>
           <th style="width: 40px; text-align: center;">
-            <input type="checkbox" [checked]="areAllSelected()" (change)="toggleSelectAll($event)" class="form-checkbox">
+            <input 
+              type="checkbox" 
+              [checked]="areAllSelected()" 
+              [indeterminate]="isPartiallySelected()" 
+              (change)="toggleSelectAll($event)" 
+              class="form-checkbox"
+              title="Seleccionar todos los clientes (todas las páginas)">
           </th>
           <th>Nombre Cliente</th>
           <th>Teléfono / Correo</th>
@@ -521,6 +527,35 @@
   </div>
 </div>
 
+<!-- Modal: Confirmar Desvincular WhatsApp -->
+<div class="modal fade show d-block" tabindex="-1" role="dialog" *ngIf="showDisconnectConfirmModal" style="background: rgba(0, 0, 0, 0.5); z-index: 1070;">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-0 shadow-lg animate-scale-up" style="border-radius: 12px; overflow: hidden;">
+      <div class="bg-danger" style="height: 6px;"></div>
+      <div class="modal-body text-center p-4">
+        <div class="mb-3" style="width: 64px; height: 64px; margin: 0 auto; background-color: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ef4444;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 32px; height: 32px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+        </div>
+        <h4 class="modal-title font-display fw-bold mb-2 text-danger">¿Desconectar WhatsApp?</h4>
+        <p class="text-secondary mb-4" style="font-size: 14px; font-family: var(--font-sans); line-height: 1.5;">
+          ¿Estás seguro de que deseas desvincular el número <strong>+{{ waConnectedPhone || 'vinculado' }}</strong>? Los envíos automáticos o masivos del CRM quedarán pausados hasta que vuelvas a escanear el código QR.
+        </p>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-light w-50 py-2 font-sans fw-semibold" (click)="closeDisconnectConfirmModal()" [disabled]="isDisconnectingWhatsApp" style="border-radius: 6px;">
+            Cancelar
+          </button>
+          <button type="button" class="btn btn-danger w-50 py-2 font-sans fw-semibold" (click)="confirmLogoutWhatsApp()" [disabled]="isDisconnectingWhatsApp" style="border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span *ngIf="isDisconnectingWhatsApp" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            <span>{{ isDisconnectingWhatsApp ? 'Desconectando...' : 'Desconectar' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Bootstrap Feedback Modal -->
 <div class="modal fade show d-block" tabindex="-1" role="dialog" *ngIf="showFeedbackModal" style="background: rgba(0, 0, 0, 0.5); z-index: 1060;">
   <div class="modal-dialog modal-dialog-centered" role="document">
@@ -545,11 +580,13 @@
 </div>
 
 <!-- Barra de Acciones Flotante -->
-<div class="floating-action-bar animate-slide-up" *ngIf="selectedClients.length > 0">
+<div class="floating-action-bar animate-slide-up" *ngIf="selectedCount > 0">
   <div class="floating-action-bar-content">
     <div class="floating-selection-info">
-      <span class="selection-badge">{{ selectedClients.length }}</span>
-      <span class="selection-text">clientes seleccionados</span>
+      <span class="selection-badge">{{ selectedCount }}</span>
+      <span class="selection-text">
+        {{ (selectAllMatching && deselectedClientIds.size === 0) || (selectedCount === pagination.total && pagination.totalPages > 1) ? 'clientes seleccionados (todas las páginas)' : 'clientes seleccionados' }}
+      </span>
     </div>
     
     <div class="floating-actions-buttons">
@@ -594,11 +631,14 @@
     </div>
 
     <div class="modal-body-custom">
-      <div class="modal-alert-custom modal-alert-info" *ngIf="getClientsWithEmail().length > 0">
+      <div class="modal-alert-custom modal-alert-info" *ngIf="selectAllMatching">
+        El correo se enviará en segundo plano a todos los <strong>{{ selectedCount }}</strong> clientes seleccionados (todas las páginas) que tengan correo electrónico registrado.
+      </div>
+      <div class="modal-alert-custom modal-alert-info" *ngIf="!selectAllMatching && getClientsWithEmail().length > 0">
         El sistema enviará el correo a cada destinatario de manera segura e individual.
       </div>
-      <div class="modal-alert-custom modal-alert-warning" *ngIf="selectedClients.length - getClientsWithEmail().length > 0">
-        <strong>Nota:</strong> {{ selectedClients.length - getClientsWithEmail().length }} cliente(s) seleccionado(s) no tienen un correo registrado y serán omitidos.
+      <div class="modal-alert-custom modal-alert-warning" *ngIf="!selectAllMatching && selectedCount - getClientsWithEmail().length > 0">
+        <strong>Nota:</strong> {{ selectedCount - getClientsWithEmail().length }} cliente(s) seleccionado(s) no tienen un correo registrado y serán omitidos.
       </div>
 
       <div class="form-group">
@@ -675,7 +715,10 @@
 
       <!-- Recipients preview list -->
       <div class="recipients-preview-container">
-        <h4 class="recipients-preview-title">Destinatarios con Correo ({{ getClientsWithEmail().length }})</h4>
+        <h4 class="recipients-preview-title">Destinatarios con Correo ({{ selectedEmailCount }})</h4>
+        <div *ngIf="selectAllMatching" style="font-size: 11px; color: #64748b; margin-bottom: 8px; font-weight: 500;">
+          Mostrando vista previa de clientes en pantalla (Total seleccionados para envío: <strong>{{ selectedEmailCount }}</strong>).
+        </div>
         <div class="recipients-list">
           <div class="recipient-tag" *ngFor="let c of getClientsWithEmail()">
             <span class="recipient-name">{{ c.firstName }} {{ c.lastName }}</span>
@@ -687,8 +730,8 @@
 
     <div class="modal-footer-custom">
       <button class="btn btn-secondary" (click)="closeBulkEmailModal()">Cancelar</button>
-      <button class="btn btn-primary" [disabled]="!bulkEmailSubject || getClientsWithEmail().length === 0" (click)="sendBulkEmail()">
-        Enviar Correos
+      <button class="btn btn-primary" [disabled]="!bulkEmailSubject || selectedCount === 0" (click)="sendBulkEmail()">
+        Enviar a {{ selectedEmailCount }} Destinatarios
       </button>
     </div>
   </div>
@@ -710,8 +753,11 @@
     </div>
 
     <div class="modal-body-custom">
-      <div class="modal-alert-custom modal-alert-warning" *ngIf="selectedClients.length - getClientsWithPhone().length > 0">
-        <strong>Nota:</strong> {{ selectedClients.length - getClientsWithPhone().length }} cliente(s) seleccionado(s) no tienen un teléfono registrado y serán omitidos.
+      <div class="modal-alert-custom modal-alert-info" *ngIf="selectAllMatching">
+        El mensaje se enviará en segundo plano a todos los <strong>{{ selectedCount }}</strong> clientes seleccionados (todas las páginas) que tengan un teléfono válido registrado.
+      </div>
+      <div class="modal-alert-custom modal-alert-warning" *ngIf="!selectAllMatching && selectedCount - getClientsWithPhone().length > 0">
+        <strong>Nota:</strong> {{ selectedCount - getClientsWithPhone().length }} cliente(s) seleccionado(s) no tienen un teléfono registrado y serán omitidos.
       </div>
 
       <!-- Navigation Tabs inside the SMS/WA Modal -->
@@ -753,9 +799,108 @@
           </button>
         </div>
 
+        <!-- Personalization Card -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size: 12px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px; color: #10b981;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+              Personalización del Saludo y Nombre
+            </span>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; user-select: none; color: #334155; font-weight: 600;">
+              <input type="checkbox" [(ngModel)]="includeGreeting" style="accent-color: #10b981; width: 16px; height: 16px; cursor: pointer;">
+              Incluir saludo al inicio
+            </label>
+          </div>
+
+          <div *ngIf="includeGreeting" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;">Tipo de Saludo</label>
+              <select [(ngModel)]="salutationType" class="form-control" style="font-size: 12px; padding: 6px 10px; height: 34px;">
+                <option *ngFor="let opt of salutationOptions" [value]="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;">Formato del Nombre</label>
+              <select [(ngModel)]="nameFormat" class="form-control" style="font-size: 12px; padding: 6px 10px; height: 34px;">
+                <option *ngFor="let opt of nameFormatOptions" [value]="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div *ngIf="includeGreeting && salutationType === 'custom'" style="margin-bottom: 8px;">
+            <label style="display: block; font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;">Texto del Saludo Personalizado</label>
+            <input type="text" [(ngModel)]="customSalutation" placeholder="Ej: Cordial saludo, Apreciado/a, Hola querido cliente" class="form-control" style="font-size: 12px; padding: 6px 10px; height: 34px;" />
+          </div>
+
+          <!-- Dynamic tags toolbar -->
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
+            <span style="font-size: 11px; color: #64748b; font-weight: 600;">Variables para el texto:</span>
+            <button type="button" (click)="insertTag('{nombre}')" class="tag-chip-btn" title="Insertar primer nombre">+ &#123;nombre&#125;</button>
+            <button type="button" (click)="insertTag('{apellido}')" class="tag-chip-btn" title="Insertar apellido">+ &#123;apellido&#125;</button>
+            <button type="button" (click)="insertTag('{nombre_completo}')" class="tag-chip-btn" title="Insertar nombre completo">+ &#123;nombre_completo&#125;</button>
+            <button type="button" (click)="insertTag('{telefono}')" class="tag-chip-btn" title="Insertar teléfono">+ &#123;telefono&#125;</button>
+          </div>
+        </div>
+
+        <!-- Image Attachment Section -->
+        <div style="margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <label class="form-label-custom" style="margin-bottom: 0; display: flex; align-items: center; gap: 6px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px; color: #10b981;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+              Adjuntar Imagen (Opcional)
+            </label>
+            <span style="font-size: 11px; color: #64748b;">Ajuste y optimización automática</span>
+          </div>
+
+          <!-- If processing image: loading state -->
+          <div *ngIf="isProcessingImage" style="border: 2px dashed #10b981; border-radius: 8px; padding: 14px; text-align: center; background-color: #f0fdf4;">
+            <div style="display: inline-block; width: 20px; height: 20px; border: 2px solid #10b981; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 6px;"></div>
+            <div style="font-size: 12px; font-weight: 600; color: #065f46;">Optimizando y ajustando tamaño de imagen...</div>
+          </div>
+
+          <!-- If no image is attached and not processing: file upload button with drag & drop -->
+          <div *ngIf="!waAttachedImage && !isProcessingImage" 
+               (dragover)="onImageDragOver($event)" 
+               (drop)="onImageDrop($event)"
+               (click)="waImageInput.click()"
+               style="border: 2px dashed #cbd5e1; border-radius: 8px; padding: 14px; text-align: center; background-color: #f8fafc; cursor: pointer; transition: all 0.2s;"
+               onmouseover="this.style.borderColor='#10b981'; this.style.backgroundColor='#f0fdf4';"
+               onmouseout="this.style.borderColor='#cbd5e1'; this.style.backgroundColor='#f8fafc';">
+            <input type="file" #waImageInput (change)="onWhatsAppImageSelected($event)" accept="image/*" style="display: none;" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 24px; height: 24px; margin: 0 auto 4px auto; color: #64748b; display: block;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+            </svg>
+            <span style="font-size: 12px; font-weight: 600; color: #334155;">Haz clic o arrastra cualquier imagen aquí (se ajusta automáticamente)</span>
+          </div>
+
+          <!-- If image is attached: thumbnail preview bar -->
+          <div *ngIf="waAttachedImage && !isProcessingImage" style="display: flex; align-items: center; justify-content: space-between; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 8px 12px;">
+            <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+              <img [src]="waAttachedImage.base64" alt="Adjunto" style="width: 44px; height: 44px; border-radius: 6px; object-fit: cover; border: 1px solid #6ee7b7; flex-shrink: 0;" />
+              <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <div style="font-size: 12px; font-weight: 700; color: #065f46; text-overflow: ellipsis; overflow: hidden;">{{ waAttachedImage.name }}</div>
+                <div style="font-size: 11px; color: #047857; display: flex; align-items: center; gap: 4px;">
+                  <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
+                  {{ waAttachedImage.size }}
+                </div>
+              </div>
+            </div>
+            <button type="button" (click)="removeWhatsAppImage()" class="action-icon-btn" title="Quitar imagen" style="color: #ef4444; background: #fee2e2; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
         <div class="form-group">
-          <label class="form-label-custom">Mensaje del Envío Automático *</label>
-          <textarea [(ngModel)]="bulkSMSBody" class="form-control" rows="4" placeholder="Escribe el mensaje común que se enviará automáticamente..." style="resize: vertical; min-height: 80px;"></textarea>
+          <label class="form-label-custom">Mensaje del Envío Automático</label>
+          <textarea id="bulkSMSBodyTextarea" [(ngModel)]="bulkSMSBody" class="form-control" rows="4" placeholder="Escribe el mensaje común que se enviará automáticamente (o déjalo como pie de foto)..." style="resize: vertical; min-height: 80px;"></textarea>
         </div>
 
         <!-- Vista Previa de Mensaje Movil -->
@@ -766,17 +911,23 @@
           <div style="padding: 16px; display: flex; justify-content: center; background-color: #e2e8f0;">
             <div style="width: 100%; max-width: 280px; background-color: #0f172a; border-radius: 20px; padding: 10px; border: 3px solid #334155; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
               <div style="text-align: center; color: #94a3b8; font-size: 9px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #1e293b; font-weight: 600;">
-                Envío Automático (Delay 1m)
+                Envío Automático (Delay 10s)
               </div>
-              <div style="background-color: #059669; color: #ffffff; padding: 8px 12px; border-radius: 12px 12px 0 12px; font-size: 11px; line-height: 1.4; max-width: 85%; margin-left: auto; word-break: break-word; white-space: pre-wrap;">Hola {{ getClientsWithPhone()[0]?.firstName || 'Cliente' }} {{ getClientsWithPhone()[0]?.lastName || '' }},
-{{ bulkSMSBody || '[Escribe el mensaje común para ver la previsualización...]' }}</div>
+              <div style="background-color: #059669; color: #ffffff; padding: 8px 10px; border-radius: 12px 12px 0 12px; font-size: 11px; line-height: 1.4; max-width: 88%; margin-left: auto; word-break: break-word; white-space: pre-wrap;">
+                <!-- Image attachment in preview -->
+                <img *ngIf="waAttachedImage" [src]="waAttachedImage.base64" alt="Imagen adjunta" style="width: 100%; border-radius: 8px; margin-bottom: 6px; object-fit: cover; max-height: 130px; display: block; border: 1px solid rgba(255,255,255,0.2);" />
+                <div>{{ getFormattedPersonalizedMessage() || (waAttachedImage ? '[Solo Imagen]' : '[Escribe el mensaje para previsualizar...]') }}</div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Recipients list -->
         <div class="recipients-preview-container" style="max-height: 180px; overflow-y: auto;">
-          <h4 class="recipients-preview-title">Destinatarios WhatsApp CRM ({{ getClientsWithPhone().length }})</h4>
+          <h4 class="recipients-preview-title">Destinatarios WhatsApp CRM ({{ selectedPhoneCount }})</h4>
+          <div *ngIf="selectAllMatching" style="font-size: 11px; color: #64748b; margin-bottom: 8px; font-weight: 500;">
+            Mostrando vista previa de clientes en pantalla (Total seleccionados para envío: <strong>{{ selectedPhoneCount }}</strong>).
+          </div>
           <div class="recipients-phones-list">
             <div class="recipient-phone-row" *ngFor="let c of getClientsWithPhone()" style="padding: 6px 12px;">
               <span class="recipient-row-name">{{ c.firstName }} {{ c.lastName }}</span>
@@ -788,9 +939,55 @@
 
       <!-- Tab: Dispositivo Local (Manual) -->
       <div *ngIf="activeSMSTab === 'manual'">
+        <!-- Personalization Card -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size: 12px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 16px; height: 16px; color: #0284c7;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+              Personalización del Saludo y Nombre
+            </span>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; user-select: none; color: #334155; font-weight: 600;">
+              <input type="checkbox" [(ngModel)]="includeGreeting" style="accent-color: #0284c7; width: 16px; height: 16px; cursor: pointer;">
+              Incluir saludo al inicio
+            </label>
+          </div>
+
+          <div *ngIf="includeGreeting" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;">Tipo de Saludo</label>
+              <select [(ngModel)]="salutationType" class="form-control" style="font-size: 12px; padding: 6px 10px; height: 34px;">
+                <option *ngFor="let opt of salutationOptions" [value]="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;">Formato del Nombre</label>
+              <select [(ngModel)]="nameFormat" class="form-control" style="font-size: 12px; padding: 6px 10px; height: 34px;">
+                <option *ngFor="let opt of nameFormatOptions" [value]="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div *ngIf="includeGreeting && salutationType === 'custom'" style="margin-bottom: 8px;">
+            <label style="display: block; font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;">Texto del Saludo Personalizado</label>
+            <input type="text" [(ngModel)]="customSalutation" placeholder="Ej: Cordial saludo, Apreciado/a, Hola querido cliente" class="form-control" style="font-size: 12px; padding: 6px 10px; height: 34px;" />
+          </div>
+
+          <!-- Dynamic tags toolbar -->
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
+            <span style="font-size: 11px; color: #64748b; font-weight: 600;">Variables para el texto:</span>
+            <button type="button" (click)="insertTag('{nombre}')" class="tag-chip-btn" title="Insertar primer nombre">+ &#123;nombre&#125;</button>
+            <button type="button" (click)="insertTag('{apellido}')" class="tag-chip-btn" title="Insertar apellido">+ &#123;apellido&#125;</button>
+            <button type="button" (click)="insertTag('{nombre_completo}')" class="tag-chip-btn" title="Insertar nombre completo">+ &#123;nombre_completo&#125;</button>
+            <button type="button" (click)="insertTag('{telefono}')" class="tag-chip-btn" title="Insertar teléfono">+ &#123;telefono&#125;</button>
+          </div>
+        </div>
+
         <div class="form-group">
           <label class="form-label-custom">Mensaje Común *</label>
-          <textarea [(ngModel)]="bulkSMSBody" class="form-control" rows="4" placeholder="Escribe el mensaje común que se pre-cargará en WhatsApp/SMS..." style="resize: vertical; min-height: 80px;"></textarea>
+          <textarea id="bulkSMSBodyTextarea" [(ngModel)]="bulkSMSBody" class="form-control" rows="4" placeholder="Escribe el mensaje común que se pre-cargará en WhatsApp/SMS..." style="resize: vertical; min-height: 80px;"></textarea>
         </div>
 
         <!-- Vista Previa de Mensaje Movil -->
@@ -803,8 +1000,7 @@
               <div style="text-align: center; color: #94a3b8; font-size: 9px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #1e293b; font-weight: 600;">
                 Vista Previa SMS / WhatsApp
               </div>
-              <div style="background-color: #059669; color: #ffffff; padding: 8px 12px; border-radius: 12px 12px 0 12px; font-size: 11px; line-height: 1.4; max-width: 85%; margin-left: auto; word-break: break-word; white-space: pre-wrap;">Hola {{ getClientsWithPhone()[0]?.firstName || 'Cliente' }} {{ getClientsWithPhone()[0]?.lastName || '' }},
-{{ bulkSMSBody || '[Escribe el mensaje común para ver la previsualización...]' }}</div>
+              <div style="background-color: #059669; color: #ffffff; padding: 8px 12px; border-radius: 12px 12px 0 12px; font-size: 11px; line-height: 1.4; max-width: 85%; margin-left: auto; word-break: break-word; white-space: pre-wrap;">{{ getFormattedPersonalizedMessage() || '[Escribe el mensaje para previsualizar...]' }}</div>
             </div>
           </div>
         </div>
@@ -828,7 +1024,10 @@
 
         <!-- Recipients listing with direct link buttons -->
         <div class="recipients-preview-container" style="max-height: 220px; overflow-y: auto;">
-          <h4 class="recipients-preview-title">Destinatarios y Enlaces Directos ({{ getClientsWithPhone().length }})</h4>
+          <h4 class="recipients-preview-title">Destinatarios y Enlaces Directos ({{ selectedPhoneCount }})</h4>
+          <div *ngIf="selectAllMatching" style="font-size: 11px; color: #64748b; margin-bottom: 8px; font-weight: 500;">
+            Mostrando vista previa de clientes en pantalla (Total seleccionados: <strong>{{ selectedPhoneCount }}</strong>).
+          </div>
           <div class="recipients-phones-list">
             <div class="recipient-phone-row" *ngFor="let c of getClientsWithPhone()">
               <div class="recipient-phone-info">
@@ -855,19 +1054,19 @@
               *ngIf="activeSMSTab === 'automatic'" 
               class="btn btn-primary" 
               style="background-color: #10b981; border-color: #10b981;"
-              [disabled]="waStatus !== 'connected' || !bulkSMSBody || getClientsWithPhone().length === 0" 
+              [disabled]="waStatus !== 'connected' || (!bulkSMSBody && !waAttachedImage) || selectedCount === 0" 
               (click)="sendBulkWhatsAppCRM()">
-        Enviar WhatsApp (CRM)
+        Enviar a {{ selectedPhoneCount }} Contactos (WhatsApp)
       </button>
     </div>
   </div>
 </div>
 
-<!-- Modal: Vincular WhatsApp (Escaneo QR) -->
+<!-- Modal: Vincular WhatsApp (Escaneo QR / Estado Conectado) -->
 <div class="modal-overlay-custom" *ngIf="showWhatsAppLinkModal" (click)="closeWhatsAppLinkModal()">
   <div class="modal-card-custom animate-scale-up" (click)="$event.stopPropagation()" style="max-width: 450px; text-align: center;">
     <div class="modal-header-custom" style="justify-content: center; position: relative;">
-      <h3 class="modal-title-custom">Vincular Número de WhatsApp</h3>
+      <h3 class="modal-title-custom">{{ waStatus === 'connected' ? 'WhatsApp Vinculado' : 'Vincular Número de WhatsApp' }}</h3>
       <button type="button" class="action-icon-btn" (click)="closeWhatsAppLinkModal()" title="Cerrar" style="position: absolute; right: 16px; top: 16px;">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -875,41 +1074,84 @@
       </button>
     </div>
 
-    <div class="modal-body-custom" style="padding: 24px;">
+    <!-- STATE 1: WhatsApp Already Connected -->
+    <div class="modal-body-custom" *ngIf="waStatus === 'connected'" style="padding: 32px 24px;">
+      <div style="width: 72px; height: 72px; margin: 0 auto 16px; background-color: #d1fae5; border: 2px solid #a7f3d0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #059669; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.2);">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 36px; height: 36px;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      </div>
+
+      <h4 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">¡WhatsApp Conectado con Éxito!</h4>
+      <p style="font-size: 13px; color: #64748b; margin-bottom: 20px; line-height: 1.5;">
+        Tu número ya se encuentra vinculado con el CRM. Los envíos masivos y automáticos se realizarán directamente a través de esta cuenta.
+      </p>
+
+      <!-- Connected Phone Card -->
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px; text-align: left;">
+          <div style="width: 10px; height: 10px; border-radius: 50%; background-color: #10b981; box-shadow: 0 0 8px #10b981;"></div>
+          <div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Número Vinculado</div>
+            <div style="font-size: 14px; font-weight: 700; color: #1e293b;">+{{ waConnectedPhone || 'Conectado' }}</div>
+          </div>
+        </div>
+        <span style="font-size: 11px; background-color: #d1fae5; color: #065f46; font-weight: 700; padding: 4px 8px; border-radius: 6px;">
+          En Línea
+        </span>
+      </div>
+
+      <div class="modal-footer-custom" style="justify-content: center; gap: 12px; padding-top: 0; border: none;">
+        <button type="button" class="btn btn-secondary" (click)="closeWhatsAppLinkModal()">Cerrar</button>
+        <button type="button" class="btn btn-danger" (click)="openDisconnectConfirmModal()" style="font-weight: 600;">
+          Desvincular WhatsApp
+        </button>
+      </div>
+    </div>
+
+    <!-- STATE 2: WhatsApp Disconnected (Show QR Code) -->
+    <div class="modal-body-custom" *ngIf="waStatus !== 'connected'" style="padding: 24px;">
       <p style="font-size: 13px; color: #475569; margin-bottom: 20px; line-height: 1.5;">
         Escanea este código QR con tu aplicación móvil de WhatsApp para conectar tu número real con el CRM y activar los envíos automáticos.
       </p>
 
       <!-- QR Display / Loader -->
-      <div style="width: 220px; height: 220px; margin: 0 auto 20px; border: 1px solid #cbd5e1; border-radius: 12px; background-color: #f8fafc; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: 10px;">
-        <div *ngIf="isLoadingQR" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-          <div style="width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-          <span style="font-size: 11px; color: #64748b; font-weight: 600;">Generando QR...</span>
+      <div style="width: 240px; height: 240px; margin: 0 auto 20px; border: 1px solid #cbd5e1; border-radius: 16px; background-color: #f8fafc; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <div *ngIf="isLoadingQR" style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px; text-align: center;">
+          <div style="width: 38px; height: 38px; border: 3px solid #e2e8f0; border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+          <span style="font-size: 13px; color: #334155; font-weight: 600;">Generando código QR...</span>
+          <span style="font-size: 11px; color: #64748b;">Conectando con el servidor de WhatsApp</span>
         </div>
         
-        <img *ngIf="!isLoadingQR && waQRData" [src]="waQRData" alt="WhatsApp QR Code" style="width: 100%; height: 100%; object-fit: contain;">
+        <img *ngIf="!isLoadingQR && waQRData" [src]="waQRData" alt="WhatsApp QR Code" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;">
         
-        <div *ngIf="!isLoadingQR && !waQRData" style="font-size: 12px; color: #ef4444; padding: 12px; font-weight: 600;">
-          No se pudo cargar el código QR. Inténtalo de nuevo.
+        <div *ngIf="!isLoadingQR && !waQRData" style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; text-align: center;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="#ef4444" style="width: 32px; height: 32px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <span style="font-size: 12px; color: #ef4444; font-weight: 600;">No se pudo cargar el código QR.</span>
+          <button type="button" class="btn btn-sm" (click)="fetchWhatsAppQR()" style="background: #10b981; color: #fff; font-size: 12px; padding: 6px 14px; border-radius: 6px; font-weight: 600; border: none; cursor: pointer;">
+            Reintentar ahora
+          </button>
         </div>
       </div>
 
       <!-- Instructions -->
-      <div style="text-align: left; font-size: 12px; color: #475569; background-color: #f1f5f9; padding: 12px 16px; border-radius: 8px; border-left: 4px solid #10b981;">
-        <ol style="margin: 0; padding-left: 16px; line-height: 1.6; font-weight: 500;">
+      <div style="text-align: left; font-size: 12px; color: #475569; background-color: #f1f5f9; padding: 14px 16px; border-radius: 10px; border-left: 4px solid #10b981;">
+        <ol style="margin: 0; padding-left: 18px; line-height: 1.6; font-weight: 500;">
           <li>Abre WhatsApp en tu teléfono celular.</li>
           <li>Ve a <strong>Menú / Ajustes</strong> (tres puntos en Android, o pestaña Configuración en iOS).</li>
           <li>Selecciona <strong>Dispositivos vinculados</strong> y presiona <strong>Vincular un dispositivo</strong>.</li>
           <li>Apunta la cámara de tu celular a este código QR para completar la conexión.</li>
         </ol>
       </div>
-    </div>
 
-    <div class="modal-footer-custom" style="justify-content: center;">
-      <button type="button" class="btn btn-secondary" (click)="closeWhatsAppLinkModal()">Cerrar</button>
-      <button type="button" class="btn btn-outline" (click)="fetchWhatsAppQR()" [disabled]="isLoadingQR" style="border-color: #10b981; color: #10b981; font-weight: 700;">
-        Recargar QR
-      </button>
+      <div class="modal-footer-custom" style="justify-content: center; gap: 12px; margin-top: 16px; border: none; padding-top: 0;">
+        <button type="button" class="btn btn-secondary" (click)="closeWhatsAppLinkModal()">Cerrar</button>
+        <button type="button" class="btn btn-outline" (click)="fetchWhatsAppQR()" [disabled]="isLoadingQR" style="border-color: #10b981; color: #10b981; font-weight: 700;">
+          Recargar QR
+        </button>
+      </div>
     </div>
   </div>
 </div>

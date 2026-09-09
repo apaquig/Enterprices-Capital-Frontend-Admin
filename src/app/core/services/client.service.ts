@@ -78,8 +78,16 @@ export class ClientService {
     return this.http.patch<ApiResponse<Client>>(`${environment.apiUrl}/clients/${id}/evaluation`, evaluation);
   }
 
-  sendBulkEmails(clientIds: string[], subject: string, body: string, attachments?: { content: string; name: string }[]): Observable<ApiResponse<any>> {
-    return this.http.post<ApiResponse<any>>(`${environment.apiUrl}/clients/send-email`, { clientIds, subject, body, attachments });
+  sendBulkEmails(payload: {
+    clientIds?: string[];
+    selectAll?: boolean;
+    filters?: any;
+    excludedIds?: string[];
+    subject: string;
+    body: string;
+    attachments?: { content: string; name: string }[];
+  }): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${environment.apiUrl}/clients/send-email`, payload);
   }
 
   // Maps frontend mock attributes to backend names if they exist
