@@ -885,7 +885,7 @@ export class ClientsComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.isLoading = false;
         if (res.success) {
-          this.showFeedback('success', 'Procesando Envíos', res.message || 'El envío de correos ha comenzado en segundo plano con un intervalo de 1 minuto entre cada cliente.');
+          this.showFeedback('success', 'Procesando Envíos', res.message || 'El envío de correos ha comenzado en segundo plano con un intervalo de 3 segundos entre cada cliente.');
           this.clearSelection();
           this.closeBulkEmailModal();
         } else {
